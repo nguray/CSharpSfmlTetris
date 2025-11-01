@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Reflection;
 using SFML.Window;
 using SFML.Graphics;
 using SFML.System;
@@ -61,11 +62,10 @@ namespace SfmlTetris
             private VideoMode mode;            
             private RenderWindow? window;
 
-            private SoundBuffer? succesSoundBuff = new SoundBuffer("109662__grunz__success.wav");
-            private Music? music = new Music("Nutcracker-song.ogg");
+             private SoundBuffer? succesSoundBuff;
+            private Music? music;
             private Sound? succesSound = new Sound();
-
-            private Font? myFont = new Font("sansation.ttf");
+            private Font? myFont;
             private Text? textScore;
 
             private List<HighScore> m_highScores = new List<HighScore>();
@@ -81,34 +81,110 @@ namespace SfmlTetris
             public void Run()
             {
 
-                m_cell_size = (int) (WIDTH / (NB_COLUMNS + 7));
-                mode = new VideoMode(WIDTH, HEIGHT);      
+                var names =
+                    System
+                    .Reflection
+                    .Assembly
+                    .GetExecutingAssembly()
+                    .GetManifestResourceNames();
+
+                foreach (var name in names)
+                {
+                    Console.WriteLine(name);
+                }
+
+
+                using (Stream? myStream = Assembly
+                            .GetExecutingAssembly()
+                            .GetManifestResourceStream(@"CSharpSfmlTetris.sansation.ttf"))
+                {
+                    if (myStream is not null)
+                    {
+                        using var fileStream = new FileStream("sansation.ttf", FileMode.Create, FileAccess.Write);
+                        {
+                            myStream.CopyTo(fileStream);
+                            fileStream.Close();
+                        }
+                        myStream.Dispose();
+                    }
+                }
+                
+                using (Stream? myStream = Assembly
+                            .GetExecutingAssembly()
+                            .GetManifestResourceStream(@"CSharpSfmlTetris.109662__grunz__success.wav"))
+                {
+                    if (myStream is not null)
+                    {
+                        using var fileStream = new FileStream("109662__grunz__success.wav", FileMode.Create, FileAccess.Write);
+                        {
+                            myStream.CopyTo(fileStream);
+                            fileStream.Close();
+                        }
+                        myStream.Dispose();
+                    }
+                }
+
+                using (Stream? myStream = Assembly
+                            .GetExecutingAssembly()
+                            .GetManifestResourceStream(@"CSharpSfmlTetris.Nutcracker-song.ogg"))
+                {
+                    if (myStream is not null)
+                    {
+                        using var fileStream = new FileStream("Nutcracker-song.ogg", FileMode.Create, FileAccess.Write);
+                        {
+                            myStream.CopyTo(fileStream);
+                            fileStream.Close();
+                        }
+                        myStream.Dispose();
+                    }
+                }
+
+                string filePath = "109662__grunz__success.wav";
+                succesSoundBuff = new SoundBuffer(filePath);
+
+                filePath = "Nutcracker-song.ogg";
+                music = new Music(filePath);
+
+                filePath = "sansation.ttf";
+                myFont = new Font(filePath);
+
+                m_cell_size = (int)(WIDTH / (NB_COLUMNS + 7));
+                mode = new VideoMode(WIDTH, HEIGHT);
 
                 window = new RenderWindow(mode, TITLE);
 
                 window.SetVerticalSyncEnabled(true);
                 window.SetFramerateLimit(60);
 
-                if (succesSoundBuff!=null){
-                    if (succesSound!=null){
+                if (succesSoundBuff != null)
+                {
+                    if (succesSound != null)
+                    {
                         succesSound.SoundBuffer = succesSoundBuff;
                         succesSound.Volume = 15.0f;
                     }
                 }
 
-                if (music!=null){
+                if (music is not null)
+                {
                     music.Volume = 40.0f;
                     music.Loop = true;
                     music.Play();
                 }
 
                 loadHighScores();
-                m_highScores.Sort(delegate (HighScore h1,HighScore h2){
-                    if (h1.Score>h2.Score){ //-- Tri Décroissant
+                m_highScores.Sort(delegate (HighScore h1, HighScore h2)
+                {
+                    if (h1.Score > h2.Score)
+                    { //-- Tri Décroissant
                         return -1;
-                    }else if (h1.Score<h2.Score){
+                    }
+                    else if (h1.Score < h2.Score)
+                    {
                         return 1;
-                    }else{
+                    }
+                    else
+                    {
                         return 0;
                     }
                 });
@@ -117,11 +193,11 @@ namespace SfmlTetris
                 //-- Get board size
                 Vector2u s = window.Size;
 
-                left  = m_cell_size;
-                right = left + m_cell_size*NB_COLUMNS;
-                m_x_center = (int) (left+m_cell_size*NB_COLUMNS/2);
-                top  = m_cell_size;
-                bottom = top + m_cell_size*NB_ROWS;
+                left = m_cell_size;
+                right = left + m_cell_size * NB_COLUMNS;
+                m_x_center = (int)(left + m_cell_size * NB_COLUMNS / 2);
+                top = m_cell_size;
+                bottom = top + m_cell_size * NB_ROWS;
 
 
                 //-- Init Game
@@ -623,14 +699,14 @@ namespace SfmlTetris
                 int     iLine = 0;
                 string  name;
                 int     score;
-                string  path = @"HighScores.txt";
                 //------------------------------------------------------
+                string filePath = "HighScores.txt";
                 try
                 {
                     
                     m_highScores.Clear();
 
-                    foreach (string line in System.IO.File.ReadLines(path))
+                    foreach (string line in System.IO.File.ReadLines(filePath))
                     {
                         //--
                         (name, score) = ParseHighScore( line);
@@ -657,15 +733,15 @@ namespace SfmlTetris
 
             void saveHighScores()
             {
-                string path = @"HighScores.txt";
                 //------------------------------------------------------
                 // Delete the file if it exists.
-                if (File.Exists(path))
+                string filePath = "HighScores.txt";
+                if (File.Exists(filePath))
                 {
-                    File.Delete(path);
+                    File.Delete(filePath);
                 }
 
-                using (FileStream fs = File.Create(path))
+                using (FileStream fs = File.Create(filePath))
                 {
                     String lin;
                     foreach ( var h in m_highScores ){

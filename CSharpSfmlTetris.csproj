@@ -11,4 +11,11 @@
     <PackageReference Include="SFML.Net" Version="2.6.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="sansation.ttf" />
+    <EmbeddedResource Include="109662__grunz__success.wav" />
+    <EmbeddedResource Include="Nutcracker-song.ogg" />
+  </ItemGroup>
+
+
 </Project>
