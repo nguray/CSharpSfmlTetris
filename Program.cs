@@ -720,6 +720,11 @@ namespace SfmlTetris
                 catch (FileNotFoundException uAEx)
                 {
                     Console.WriteLine(uAEx.Message);
+                    m_highScores.Clear();
+                    for (int i=0; i<10; i++)
+                    {
+                        m_highScores.Add(new HighScore("XXXXXX",0));                        
+                    }
                 }
             
             }
