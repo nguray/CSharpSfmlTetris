@@ -11,15 +11,28 @@ using System.Text;
 
 namespace SfmlTetris
 {
+
+   static class Globals{
+
+        public const int WIN_WIDTH = 480;
+        public const int WIN_HEIGHT = 560;
+  
+        public const int NB_ROWS = 20;
+        public const int NB_COLUMNS = 12;
+
+        public const int LEFT = 10;
+        public const int TOP = 10;
+
+        public static int cellSize = Globals.WIN_WIDTH / (Globals.NB_COLUMNS + 7);
+
+        public static Random? rand;
+
+    }
+
     class Program
     {
 
-        const int WIDTH = 480;
-        const int HEIGHT = 560;
         const string TITLE = "Tetris";
-
-        const int NB_ROWS = 20;
-        const int NB_COLUMNS = 12;
 
         static void Main(string[] args)
         {
@@ -53,8 +66,8 @@ namespace SfmlTetris
 
             private int m_x_center = 0;
 
-            private Brick? m_curBrick;
-            private Brick? m_nextBrick;
+            private Tetromino? m_curTetromino;
+            private Tetromino? m_nextTetromino;
             private Clock m_clock = new Clock();
             private Random m_random = new Random();
 
@@ -76,6 +89,7 @@ namespace SfmlTetris
 
             private int m_last_updateV = 0;
             private int m_last_updateH = 0;
+            private int m_last_update_next = 0;
 
             private delegate void ProcessKey(object? sender, SFML.Window.KeyEventArgs e);
 
@@ -181,8 +195,7 @@ namespace SfmlTetris
                 filePath = "sansation.ttf";
                 myFont = new Font(filePath);
 
-                m_cell_size = (int)(WIDTH / (NB_COLUMNS + 7));
-                mode = new VideoMode(WIDTH, HEIGHT);
+                mode = new VideoMode(Globals.WIN_WIDTH, Globals.WIN_HEIGHT);
 
                 window = new RenderWindow(mode, TITLE);
 
@@ -223,11 +236,11 @@ namespace SfmlTetris
                 //-- Get board size
                 Vector2u s = window.Size;
 
-                left = m_cell_size;
-                right = left + m_cell_size * NB_COLUMNS;
-                m_x_center = (int)(left + m_cell_size * NB_COLUMNS / 2);
+                left = Globals.cellSize;
+                right = left + Globals.cellSize * Globals.NB_COLUMNS;
+                m_x_center = (int)(left + Globals.cellSize * Globals.NB_COLUMNS / 2);
                 top = m_cell_size;
-                bottom = top + m_cell_size * NB_ROWS;
+                bottom = top + m_cell_size * Globals.NB_ROWS;
 
                 //-- Init Game
                 init();
@@ -263,17 +276,16 @@ namespace SfmlTetris
             void init()
             {
                 m_table.Clear();
-                for (int r=0;r<NB_ROWS;r++){
-                    for(int c=0;c<NB_COLUMNS;c++){
+                for (int r=0;r<Globals.NB_ROWS;r++){
+                    for(int c=0;c<Globals.NB_COLUMNS;c++){
                         m_table.Add(0);
                     }
                 }
-                m_cell_size = (right - left) / NB_COLUMNS;
-                bottom = m_cell_size * NB_ROWS + top;
+                bottom = Globals.cellSize * Globals.NB_ROWS + top;
                 m_score = 0;
                 m_speed = 500;
-                m_curBrick = null;
-                m_nextBrick = null;
+                m_curTetromino = null;
+                m_nextTetromino = null;
                 m_last_updateH = 0;
                 m_last_updateV = 0;
             }
@@ -321,22 +333,22 @@ namespace SfmlTetris
 
                 }else if (e.Code == SFML.Window.Keyboard.Key.Up)
                 {
-                    if (m_curBrick!=null)
+                    if (m_curTetromino!=null)
                     {
-                        m_curBrick.RotateLeft();
+                        m_curTetromino.RotateLeft();
                         if (checkHit()){
-                            m_curBrick.RotateRight();
+                            m_curTetromino.RotateRight();
                         }
                     }
 
                 }else if (e.Code == SFML.Window.Keyboard.Key.Down)
                 {
-                    if (m_curBrick!=null)
+                    if (m_curTetromino!=null)
                     {
-                        m_curBrick.RotateRight();
+                        m_curTetromino.RotateRight();
                         if (checkHit())
                         {
-                            m_curBrick.RotateLeft();
+                            m_curTetromino.RotateLeft();
                         }
                     }
                 }else if (e.Code == SFML.Window.Keyboard.Key.Space){
@@ -371,15 +383,11 @@ namespace SfmlTetris
                 var window = (SFML.Window.Window) sender;
                 if (e.Code == SFML.Window.Keyboard.Key.Space){
                    init();
-                    m_curBrick = new Brick(m_random.Next(1,8));
-                    m_curBrick.m_position.X = NB_COLUMNS/2;
-                    m_curBrick.m_position.Y = 0;
-                    m_curBrick.AjustStartY();
+                    m_curTetromino = new Tetromino(m_random.Next(1,8),Globals.NB_COLUMNS/2,0);
+                    //m_curBrick.AjustStartY();
 
-                    m_nextBrick = new Brick(m_random.Next(1,8));
-                    m_nextBrick.m_position.X = NB_COLUMNS/2;
-                    m_nextBrick.m_position.Y = 0;
-                    m_nextBrick.AjustStartY();
+                    m_nextTetromino = new Tetromino(m_random.Next(1,8),Globals.NB_COLUMNS+3,Globals.NB_ROWS/2);
+                    //m_nextBrick.AjustStartY();
 
                     m_clock.Restart();
                     m_last_updateH = 0;
@@ -437,7 +445,7 @@ namespace SfmlTetris
                 if (e.Code == SFML.Window.Keyboard.Key.Enter){
                     insertHighScore(m_idHightScore, m_playerName, m_score);
                     SetStandbyMode();
-                    m_curBrick = null;
+                    m_curTetromino = null;
                     m_playerName = "";
                 }else if (e.Code == SFML.Window.Keyboard.Key.Space){
                     if ((m_playerName==null)||(m_playerName.Length<8)){
@@ -478,37 +486,44 @@ namespace SfmlTetris
             //--
             private void update()
             {
-                if ((m_curBrick != null) && (window != null))
+                if ((m_curTetromino != null) && (window != null))
                 {
 
                     if (m_mode == GameMode.PLAY)
                     {
                         var r = m_clock.ElapsedTime.AsMilliseconds();
 
+                        if ((r - m_last_update_next) > 500)
+                        {
+                            m_last_update_next = r;
+                            if (m_nextTetromino!=null)
+                            {
+                                m_nextTetromino.RotateLeft();                            
+                            }
+                        }
+
                         if ((r - m_last_updateV) > m_speed)
                         {
                             m_last_updateV = r;
 
-                            m_curBrick.m_position.X += m_velocityH;
+                            m_curTetromino.x += m_velocityH;
                             if (checkHit())
                             {
-                                m_curBrick.m_position.X -= m_velocityH;
+                                m_curTetromino.x -= m_velocityH;
                             }
                             else
                             {
                                 m_last_updateH = r;
                             }
 
-                            m_curBrick.m_position.Y++;
+                            m_curTetromino.y++;
                             if (checkHit())
                             {
-                                m_curBrick.m_position.Y--;
+                                m_curTetromino.y--;
                                 setBrick();
-                                m_curBrick = m_nextBrick;
-                                m_nextBrick = new Brick(m_random.Next(1, 8));
-                                m_nextBrick.m_position.X = NB_COLUMNS / 2;
-                                m_nextBrick.m_position.Y = 0;
-                                m_nextBrick.AjustStartY();
+                                m_curTetromino = m_nextTetromino;
+                                m_nextTetromino = new Tetromino(m_random.Next(1, 8),Globals.NB_COLUMNS/2,Globals.NB_ROWS/2);
+                                //m_nextBrick.AjustStartY();
                                 if (checkHit())
                                 {
                                     if (isGameOver())
@@ -533,10 +548,10 @@ namespace SfmlTetris
                         {
                             if ((r - m_last_updateH) > 80)
                             {
-                                m_curBrick.m_position.X += m_velocityH;
+                                m_curTetromino.x += m_velocityH;
                                 if (checkHit())
                                 {
-                                    m_curBrick.m_position.X -= m_velocityH;
+                                    m_curTetromino.x -= m_velocityH;
                                 }
                                 else
                                 {
@@ -576,16 +591,14 @@ namespace SfmlTetris
                     else if (m_mode == GameMode.AUTO)
                     {
 
-                        m_curBrick.m_position.Y++;
+                        m_curTetromino.y++;
                         if (checkHit())
                         {
-                            m_curBrick.m_position.Y--;
+                            m_curTetromino.y--;
                             setBrick();
-                            m_curBrick = m_nextBrick;
-                            m_nextBrick = new Brick(m_random.Next(1, 8));
-                            m_nextBrick.m_position.X = NB_COLUMNS / 2;
-                            m_nextBrick.m_position.Y = 0;
-                            m_nextBrick.AjustStartY();
+                            m_curTetromino = m_nextTetromino;
+                            m_nextTetromino = new Tetromino(m_random.Next(1, 8),Globals.NB_COLUMNS/2,0);
+                            //m_nextBrick.AjustStartY();
                             SetPlayMode();
                         }
                         //--
@@ -644,16 +657,16 @@ namespace SfmlTetris
                         case GameMode.PLAY:
                             drawCurrentBrick();
                             int     x,y,typ;
-                            RectangleShape  r = new RectangleShape(new Vector2f(m_cell_size-2, m_cell_size-2));
+                            RectangleShape  r = new RectangleShape(new Vector2f(Globals.cellSize-2, Globals.cellSize-2));
 
-                            for (int l=0;l<NB_ROWS;l++){
-                                for(int c=0;c<NB_COLUMNS;c++){
-                                    x = c*m_cell_size + left;
-                                    y = l*m_cell_size + top;
+                            for (int l=0;l<Globals.NB_ROWS;l++){
+                                for(int c=0;c<Globals.NB_COLUMNS;c++){
+                                    x = c*Globals.cellSize + left;
+                                    y = l*Globals.cellSize + top;
                                     r.Position =  new Vector2f(x+1, y+1);
-                                    typ = m_table[c+l*NB_COLUMNS];
+                                    typ = m_table[c+l*Globals.NB_COLUMNS];
                                     if (typ!=0){
-                                        r.FillColor = Brick.m_colors[typ];
+                                        r.FillColor = Tetromino.Colors[typ];
                                         window.Draw(r);
                                     }                              
                                     
@@ -680,7 +693,7 @@ namespace SfmlTetris
             bool isGameOver()
             {
                 //----------------------------------------
-                for(int c=0;c<NB_COLUMNS;c++){
+                for(int c=0;c<Globals.NB_COLUMNS;c++){
                     if (m_table[c]!=0){
                         return true;
                     }
@@ -693,13 +706,13 @@ namespace SfmlTetris
             {
                 int     x,y;
                 //-------------------------------------------
-                if (m_curBrick is not null){
-                    foreach (var v in m_curBrick.m_vectors){
-                        x = v.X + m_curBrick.m_position.X;
-                        y = v.Y + m_curBrick.m_position.Y;
-                        if ((x<0)||(x>=NB_COLUMNS)||(y<0)||(y>=NB_ROWS)){
+                if (m_curTetromino is not null){
+                    foreach (var v in m_curTetromino.vectors){
+                        x = v.X + m_curTetromino.x;
+                        y = v.Y + m_curTetromino.y;
+                        if ((x<0)||(x>=Globals.NB_COLUMNS)||(y<0)||(y>=Globals.NB_ROWS)){
                             return true;
-                        }else if (m_table[x+y*NB_COLUMNS]!=0){
+                        }else if (m_table[x+y*Globals.NB_COLUMNS]!=0){
                             return true;
                         }
                     }
@@ -711,11 +724,11 @@ namespace SfmlTetris
             {
                 int     x,y;
                 //-------------------------------------------
-                if (m_curBrick!=null){
-                    foreach (var v in m_curBrick.m_vectors){
-                        x = v.X + m_curBrick.m_position.X;
-                        y = v.Y + m_curBrick.m_position.Y;
-                        m_table[x+y*NB_COLUMNS] = m_curBrick.m_type;
+                if (m_curTetromino!=null){
+                    foreach (var v in m_curTetromino.vectors){
+                        x = v.X + m_curTetromino.x;
+                        y = v.Y + m_curTetromino.y;
+                        m_table[x+y*Globals.NB_COLUMNS] = m_curTetromino.type;
                     }
                 }
             }
@@ -725,10 +738,10 @@ namespace SfmlTetris
                 int     nbL=0;
                 bool    fCompleted=false;
                 //-------------------------------------------
-                for (int l=0;l<NB_ROWS;l++){
+                for (int l=0;l<Globals.NB_ROWS;l++){
                     fCompleted = true;
-                    for(int c=0;c<NB_COLUMNS;c++){
-                        if (m_table[c+l*NB_COLUMNS]==0){
+                    for(int c=0;c<Globals.NB_COLUMNS;c++){
+                        if (m_table[c+l*Globals.NB_COLUMNS]==0){
                             fCompleted = false;
                             break;
                         }
@@ -736,14 +749,14 @@ namespace SfmlTetris
                     if (fCompleted){
                         nbL++;
                         if (l==0){
-                            for(int c=0;c<NB_COLUMNS;c++){
-                                m_table[c+l*NB_COLUMNS] = 0;
+                            for(int c=0;c<Globals.NB_COLUMNS;c++){
+                                m_table[c+l*Globals.NB_COLUMNS] = 0;
                             }
                         }else{
                             //-- Décaler les lignes au dessus sur la ligne courante
                             for(int l1=l;l1>0;l1--){
-                                for(int c=0;c<NB_COLUMNS;c++){
-                                    m_table[c+l1*NB_COLUMNS] = m_table[c+(l1-1)*NB_COLUMNS];
+                                for(int c=0;c<Globals.NB_COLUMNS;c++){
+                                    m_table[c+l1*Globals.NB_COLUMNS] = m_table[c+(l1-1)*Globals.NB_COLUMNS];
                                 }
                             }
                         }
@@ -884,8 +897,8 @@ namespace SfmlTetris
                     txt.Position = new Vector2f(m_x_center, 44);
                     window.Draw(txt);
 
-                    int xCol0 = m_cell_size*(NB_COLUMNS/4);
-                    int xCol1 = m_cell_size*(3*NB_COLUMNS/4);
+                    int xCol0 = m_cell_size*(Globals.NB_COLUMNS/4);
+                    int xCol1 = m_cell_size*(3*Globals.NB_COLUMNS/4);
                     int yLin = 80;
                     foreach (var h in m_highScores)
                     {
@@ -911,7 +924,7 @@ namespace SfmlTetris
                     if (textScore!=null){
                         textScore.FillColor = new Color(255,223,0);
                         textScore.Style = Text.Styles.Bold | Text.Styles.Italic;
-                        textScore.Position = new Vector2f(left+(m_cell_size*NB_COLUMNS+1),top);
+                        textScore.Position = new Vector2f(left+(Globals.cellSize*Globals.NB_COLUMNS+1),top);
                         window.Draw(textScore);
                     }
                  }
@@ -943,17 +956,18 @@ namespace SfmlTetris
             {
                 int x,y;
                 //-------------------------------------------
-                if ((m_curBrick!=null)&&(window != null)){
-                    RectangleShape r1 = new RectangleShape(new Vector2f(m_cell_size - 2, m_cell_size - 2));
-                    r1.FillColor = m_curBrick.m_color;
+                if ((m_curTetromino!=null)&&(window != null)){
+                    m_curTetromino.Draw(window);
+                    // RectangleShape r1 = new RectangleShape(new Vector2f(m_cell_size - 2, m_cell_size - 2));
+                    // r1.FillColor = m_curTetromino.color;
 
-                    foreach (var v in m_curBrick.m_vectors)
-                    {
-                        x = (v.X + m_curBrick.m_position.X) * m_cell_size + left;
-                        y = (v.Y + m_curBrick.m_position.Y) * m_cell_size + top;
-                        r1.Position = new Vector2f(x + 1, y + 1);
-                        window.Draw(r1);
-                    }
+                    // foreach (var v in m_curTetromino.vectors)
+                    // {
+                    //     x = (v.X + m_curTetromino.x) * Globals.cellSize + Globals.LEFT;
+                    //     y = (v.Y + m_curTetromino.y) * Globals.cellSize + Globals.TOP;
+                    //     r1.Position = new Vector2f(x + 1, y + 1);
+                    //     window.Draw(r1);
+                    // }
                 }
 
             }
@@ -962,19 +976,20 @@ namespace SfmlTetris
             {
                 int x,y;
                 //-------------------------------------------
-                if ((m_nextBrick!=null)&&(window != null)){
-                    RectangleShape r1 = new RectangleShape(new Vector2f(m_cell_size - 2, m_cell_size - 2));
-                    r1.FillColor = m_nextBrick.m_color;
+                if ((m_nextTetromino!=null)&&(window != null)){
+                    m_nextTetromino.Draw(window);
+                    // RectangleShape r1 = new RectangleShape(new Vector2f(Globals.cellSize - 2, Globals.cellSize - 2));
+                    // r1.FillColor = m_nextTetromino.color;
 
-                    int iposX = (NB_COLUMNS+3);
-                    int iposY = 10;
-                    foreach (var v in m_nextBrick.m_vectors)
-                    {
-                        x = (v.X + iposX) * m_cell_size + left;
-                        y = (v.Y + iposY) * m_cell_size + top;
-                        r1.Position = new Vector2f(x + 1, y + 1);
-                        window.Draw(r1);
-                    }
+                    // int iposX = Globals.NB_COLUMNS+3;
+                    // int iposY = 10;
+                    // foreach (var v in m_nextTetromino.vectors)
+                    // {
+                    //     x = (v.X + iposX) * Globals.cellSize + Globals.LEFT;
+                    //     y = (v.Y + iposY) * Globals.cellSize + Globals.WIN_HEIGHT;
+                    //     r1.Position = new Vector2f(x + 1, y + 1);
+                    //     window.Draw(r1);
+                    // }
                 }
 
             }
@@ -996,8 +1011,8 @@ namespace SfmlTetris
                     txt.Position = new Vector2f(m_x_center, 44);
                     window.Draw(txt);
 
-                    int xCol0 = m_cell_size*(NB_COLUMNS/4);
-                    int xCol1 = m_cell_size*(3*NB_COLUMNS/4);
+                    int xCol0 = Globals.cellSize*(Globals.NB_COLUMNS/4);
+                    int xCol1 = Globals.cellSize*(3*Globals.NB_COLUMNS/4);
                     int yLin = 2 * 36;
                     if (m_playerName == null)
                     {
@@ -1023,7 +1038,7 @@ namespace SfmlTetris
                 if (window != null){
                     int offSetY = (bottom - top) / 6;
                     int yLin = offSetY;
-                    Text txt = new Text("TETRIS", myFont, 32);
+                    Text txt = new Text("TETRIS", myFont, 24);
                     if ((m_i_color % 2)==0){
                         txt.FillColor = new Color(254, 238, 72, 255);
                     }else{
