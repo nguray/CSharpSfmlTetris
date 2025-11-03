@@ -35,11 +35,10 @@ namespace SfmlTetris
 
             enum GameMode {
                 STANDBY=0,
-                PLAYER,
+                PLAY,
                 AUTO,
-                HIGHT_SCORE,
-                HALL_OF_FAME,
-                OVER
+                HIGH_SCORES,
+                GAME_OVER
             }
 
             private GameMode m_mode = GameMode.STANDBY;
@@ -78,6 +77,40 @@ namespace SfmlTetris
             private int m_last_updateV = 0;
             private int m_last_updateH = 0;
 
+            private delegate void ProcessKey(object? sender, SFML.Window.KeyEventArgs e);
+
+            private ProcessKey? processKeyPressedProc;
+            private ProcessKey? processKeyReleasedProc;
+
+            public void SetStandbyMode()
+            {
+                m_mode = GameMode.STANDBY;
+                processKeyPressedProc = processKeyPressedStandbyMode;
+                processKeyReleasedProc = processKeyReleasedStandbyMode;                
+            }
+
+            public void SetPlayMode()
+            {
+                m_mode = GameMode.PLAY;
+                processKeyPressedProc = processKeyPressedPlayMode;
+                processKeyReleasedProc = processKeyReleasedPlayMode;                
+            }
+
+            public void SetHighScoresMode()
+            {
+                m_mode = GameMode.HIGH_SCORES;
+                processKeyPressedProc = processKeyPressedHighScoresMode;
+                processKeyReleasedProc = processKeyReleasedHighScoresMode;         
+
+            }
+
+            public void SetGameOverMode()
+            {
+                m_mode = GameMode.GAME_OVER;
+                processKeyPressedProc = processKeyPressedGameOverMode;
+                processKeyReleasedProc = processKeyReleasedGameOverMode;                
+            }
+
             public void Run()
             {
 
@@ -108,7 +141,7 @@ namespace SfmlTetris
                         myStream.Dispose();
                     }
                 }
-                
+
                 using (Stream? myStream = Assembly
                             .GetExecutingAssembly()
                             .GetManifestResourceStream(@"CSharpSfmlTetris.109662__grunz__success.wav"))
@@ -183,10 +216,7 @@ namespace SfmlTetris
                     {
                         return 1;
                     }
-                    else
-                    {
-                        return 0;
-                    }
+                    return 0;
                 });
 
 
@@ -199,17 +229,15 @@ namespace SfmlTetris
                 top = m_cell_size;
                 bottom = top + m_cell_size * NB_ROWS;
 
-
                 //-- Init Game
                 init();
-
 
                 window.Closed += (StringReader, args) => endGame();
                 window.KeyReleased += OnKeyReleased;
 
-                m_mode = GameMode.STANDBY;
-                window.KeyPressed += OnKeyPressedStandby;
+                window.KeyPressed += OnKeyPressed;
 
+                SetStandbyMode();
 
                 while (window.IsOpen)
                 {
@@ -250,8 +278,25 @@ namespace SfmlTetris
                 m_last_updateV = 0;
             }
 
-
-            void OnKeyPressedPlayerMode(object? sender, SFML.Window.KeyEventArgs e) 
+            void OnKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
+            {
+                if (processKeyPressedProc != null)
+                {
+                    processKeyPressedProc(sender, e);                
+                }
+            }
+            void OnKeyReleased(object? sender, SFML.Window.KeyEventArgs e)
+            {
+                if (processKeyReleasedProc != null)
+                {
+                    processKeyReleasedProc(sender, e);
+                }
+            }
+            
+            //---------------------------------------------------------------------
+            //-- Play Mode
+            //---------------------------------------------------------------------
+            void processKeyPressedPlayMode(object? sender, SFML.Window.KeyEventArgs e)
             {
                 //----------------------------------------------
                 if (sender==null) return;
@@ -259,13 +304,11 @@ namespace SfmlTetris
                 if (e.Code == SFML.Window.Keyboard.Key.Escape)
                 {
                     m_idHightScore = IsHighScore(m_score);
-                    window.KeyPressed -= OnKeyPressedPlayerMode;
+                    //window.KeyPressed -= OnKeyPressedPlayerMode;
                     if (m_idHightScore==-1){
-                        m_mode = GameMode.STANDBY;
-                        window.KeyPressed += OnKeyPressedStandby;
+                        SetStandbyMode();
                     }else{
-                        m_mode = GameMode.HIGHT_SCORE;
-                        window.KeyPressed += OnKeyPressedHightScoresMode;
+                        SetHighScoresMode();
                     }
 
                 }else if (e.Code == SFML.Window.Keyboard.Key.Left)
@@ -300,11 +343,28 @@ namespace SfmlTetris
                     m_mode = GameMode.AUTO;
                 }
 
+            }
+
+            void processKeyReleasedPlayMode(object? sender, SFML.Window.KeyEventArgs e)
+            {
+                if (sender == null) return;
+                var window = (SFML.Window.Window)sender;
+                switch (m_mode)
+                {
+                    case GameMode.PLAY:
+                        if ((e.Code == SFML.Window.Keyboard.Key.Left) || (e.Code == SFML.Window.Keyboard.Key.Right))
+                        {
+                            m_velocityH = 0;
+                        }
+                        break;
+                }
 
             }
 
-
-            void OnKeyPressedStandby(object? sender, SFML.Window.KeyEventArgs e) 
+            //---------------------------------------------------------------------
+            //--Standby Mode
+            //---------------------------------------------------------------------
+            void processKeyPressedStandbyMode(object? sender, SFML.Window.KeyEventArgs e) 
             {
                 //----------------------------------------------
                 if (sender==null) return;
@@ -324,9 +384,7 @@ namespace SfmlTetris
                     m_clock.Restart();
                     m_last_updateH = 0;
                     m_last_updateV = 0;
-                    m_mode = GameMode.PLAYER; 
-                    window.KeyPressed -= OnKeyPressedStandby;
-                    window.KeyPressed += OnKeyPressedPlayerMode;
+                    SetPlayMode();
  
                 }else if (e.Code == SFML.Window.Keyboard.Key.Escape){
                     endGame();
@@ -334,16 +392,23 @@ namespace SfmlTetris
                 }
 
             }
+            void processKeyReleasedStandbyMode(object? sender, SFML.Window.KeyEventArgs e)
+            {
 
-            void OnKeyPressedGameOverMode(object? sender, SFML.Window.KeyEventArgs e) 
+            }
+            
+            //------------------------------------------------------------------
+            //--GameOver Mode
+            //------------------------------------------------------------------
+            void processKeyPressedGameOverMode(object? sender, SFML.Window.KeyEventArgs e) 
             {
                 //----------------------------------------------
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
                 if (e.Code == SFML.Window.Keyboard.Key.Space){
-                    window.KeyPressed -= OnKeyPressedGameOverMode;
+                    //window.KeyPressed -= OnKeyPressedGameOverMode;
                     m_mode = GameMode.STANDBY;
-                    window.KeyPressed += OnKeyPressedStandby;
+                    //window.KeyPressed += OnKeyPressedStandby;
 
                     init();
                     updateHighScores("-----",m_score);
@@ -355,27 +420,23 @@ namespace SfmlTetris
 
             }
 
-            void OnKeyPressedHallOfFame(object? sender, SFML.Window.KeyEventArgs e) {
-                //----------------------------------------------
-                if (sender==null) return;
-                var window = (SFML.Window.Window) sender;
-                    window.KeyPressed -= OnKeyPressedHallOfFame;
-                    m_mode = GameMode.STANDBY;
-                    window.KeyPressed += OnKeyPressedStandby;
+            void processKeyReleasedGameOverMode(object? sender, SFML.Window.KeyEventArgs e)
+            {
 
             }
-
-            void OnKeyPressedHightScoresMode(object? sender, SFML.Window.KeyEventArgs e) 
+            
+            //------------------------------------------------------------------
+            //--HighScores Mode
+            //------------------------------------------------------------------
+            void processKeyPressedHighScoresMode(object? sender, SFML.Window.KeyEventArgs e) 
             {
                 //----------------------------------------------
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
 
                 if (e.Code == SFML.Window.Keyboard.Key.Enter){
-                    insertHighScore(m_idHightScore,m_playerName,m_score);
-                    window.KeyPressed -= OnKeyPressedHightScoresMode;
-                    m_mode = GameMode.HALL_OF_FAME;
-                    window.KeyPressed += OnKeyPressedHallOfFame;
+                    insertHighScore(m_idHightScore, m_playerName, m_score);
+                    SetStandbyMode();
                     m_curBrick = null;
                     m_playerName = "";
                 }else if (e.Code == SFML.Window.Keyboard.Key.Space){
@@ -408,76 +469,77 @@ namespace SfmlTetris
                 }
                
             }
-
-
-            /// <summary>
-            /// Function called when a key is released
-            /// </summary>
-            void OnKeyReleased(object? sender, SFML.Window.KeyEventArgs e) 
+            void processKeyReleasedHighScoresMode(object? sender, SFML.Window.KeyEventArgs e)
             {
-                if (sender==null) return;
-                var window = (SFML.Window.Window) sender;
-                switch(m_mode){
-                    case GameMode.PLAYER:
-                        if ((e.Code == SFML.Window.Keyboard.Key.Left) || (e.Code == SFML.Window.Keyboard.Key.Right))
-                        {
-                            m_velocityH = 0;
-                        }
-                    break;
-                }
 
             }
 
-
+            //--------------------------------------------------------------------
+            //--
             private void update()
             {
-                if ((m_curBrick!=null) && (window!=null)){
+                if ((m_curBrick != null) && (window != null))
+                {
 
-                    if (m_mode==GameMode.PLAYER){
+                    if (m_mode == GameMode.PLAY)
+                    {
                         var r = m_clock.ElapsedTime.AsMilliseconds();
 
-                        if ((r-m_last_updateV) > m_speed) {
+                        if ((r - m_last_updateV) > m_speed)
+                        {
                             m_last_updateV = r;
 
                             m_curBrick.m_position.X += m_velocityH;
-                            if (checkHit()){
+                            if (checkHit())
+                            {
                                 m_curBrick.m_position.X -= m_velocityH;
-                            }else{
+                            }
+                            else
+                            {
                                 m_last_updateH = r;
                             }
 
                             m_curBrick.m_position.Y++;
-                            if (checkHit()){
+                            if (checkHit())
+                            {
                                 m_curBrick.m_position.Y--;
                                 setBrick();
                                 m_curBrick = m_nextBrick;
-                                m_nextBrick = new Brick(m_random.Next(1,8));
-                                m_nextBrick.m_position.X = NB_COLUMNS/2;
+                                m_nextBrick = new Brick(m_random.Next(1, 8));
+                                m_nextBrick.m_position.X = NB_COLUMNS / 2;
                                 m_nextBrick.m_position.Y = 0;
                                 m_nextBrick.AjustStartY();
-                                if (checkHit()){
-                                    if (isGameOver()){
-                                        window.KeyPressed -= OnKeyPressedPlayerMode;
+                                if (checkHit())
+                                {
+                                    if (isGameOver())
+                                    {
                                         m_idHightScore = IsHighScore(m_score);
-                                        if (m_idHightScore==-1){
-                                            m_mode = GameMode.OVER;
-                                            window.KeyPressed += OnKeyPressedGameOverMode;
-                                        }else{
-                                            m_mode = GameMode.HIGHT_SCORE;
-                                            window.KeyPressed += OnKeyPressedHightScoresMode;
+                                        if (m_idHightScore == -1)
+                                        {
+                                            SetGameOverMode();
                                         }
-                                        
+                                        else
+                                        {
+                                            SetHighScoresMode();
+                                        }
+
                                     }
 
                                 }
 
                             }
-                        }else{
-                            if ((r-m_last_updateH) > 80){
+                        }
+                        else
+                        {
+                            if ((r - m_last_updateH) > 80)
+                            {
                                 m_curBrick.m_position.X += m_velocityH;
-                                if (checkHit()){
+                                if (checkHit())
+                                {
                                     m_curBrick.m_position.X -= m_velocityH;
-                                }else{
+                                }
+                                else
+                                {
                                     m_last_updateH = r;
                                 }
 
@@ -487,9 +549,11 @@ namespace SfmlTetris
 
                         //--
                         var nbL = clearCompletedLines();
-                        if (nbL!=0){
-                            if (succesSound!=null) succesSound.Play();
-                            switch (nbL){
+                        if (nbL != 0)
+                        {
+                            if (succesSound != null) succesSound.Play();
+                            switch (nbL)
+                            {
                                 case 1:
                                     m_score += 40;
                                     break;
@@ -506,26 +570,31 @@ namespace SfmlTetris
 
                         }
 
-                        
 
-                    }else if (m_mode==GameMode.AUTO){
-                            
+
+                    }
+                    else if (m_mode == GameMode.AUTO)
+                    {
+
                         m_curBrick.m_position.Y++;
-                        if (checkHit()){
+                        if (checkHit())
+                        {
                             m_curBrick.m_position.Y--;
                             setBrick();
                             m_curBrick = m_nextBrick;
-                            m_nextBrick = new Brick(m_random.Next(1,8));
-                            m_nextBrick.m_position.X = NB_COLUMNS/2;
+                            m_nextBrick = new Brick(m_random.Next(1, 8));
+                            m_nextBrick.m_position.X = NB_COLUMNS / 2;
                             m_nextBrick.m_position.Y = 0;
                             m_nextBrick.AjustStartY();
-                            m_mode=GameMode.PLAYER;
+                            SetPlayMode();
                         }
                         //--
                         var nbL = clearCompletedLines();
-                        if (nbL!=0){
-                            if (succesSound!=null) succesSound.Play();
-                            switch (nbL){
+                        if (nbL != 0)
+                        {
+                            if (succesSound != null) succesSound.Play();
+                            switch (nbL)
+                            {
                                 case 1:
                                     m_score += 40;
                                     break;
@@ -542,15 +611,18 @@ namespace SfmlTetris
                         }
 
                     }
-                }else if ((m_mode==GameMode.STANDBY)||(m_mode==GameMode.HALL_OF_FAME)||(m_mode==GameMode.HIGHT_SCORE)){
+                }
+                else if ((m_mode == GameMode.STANDBY) || (m_mode == GameMode.HIGH_SCORES))
+                {
                     var r = m_clock.ElapsedTime.AsMilliseconds();
-                    if (r > m_speed) {
+                    if (r > m_speed)
+                    {
                         m_clock.Restart();
                         m_i_color++;
                     }
                 }
 
-		    }
+            }
 
             private void draw()
             {
@@ -569,7 +641,7 @@ namespace SfmlTetris
                             drawStandbyScreen();
                             break;
                         case GameMode.AUTO:
-                        case GameMode.PLAYER:
+                        case GameMode.PLAY:
                             drawCurrentBrick();
                             int     x,y,typ;
                             RectangleShape  r = new RectangleShape(new Vector2f(m_cell_size-2, m_cell_size-2));
@@ -591,13 +663,10 @@ namespace SfmlTetris
                             drawNextBrick();
                             break;
 
-                        case GameMode.HIGHT_SCORE:
-                            drawHightScoreInputScreen();
-                            break;
-                        case GameMode.HALL_OF_FAME:
+                        case GameMode.HIGH_SCORES:
                             drawHighScoresScreen();
                             break;
-                        case GameMode.OVER:
+                        case GameMode.GAME_OVER:
                             drawGameOverScreen();
                             //drawCurrentScore();
                             break;
@@ -624,7 +693,7 @@ namespace SfmlTetris
             {
                 int     x,y;
                 //-------------------------------------------
-                if (m_curBrick!=null){
+                if (m_curBrick is not null){
                     foreach (var v in m_curBrick.m_vectors){
                         x = v.X + m_curBrick.m_position.X;
                         y = v.Y + m_curBrick.m_position.Y;
@@ -840,7 +909,7 @@ namespace SfmlTetris
                  if (window!=null){
                     textScore = new Text(String.Format("Score : {0:00000}",m_score),myFont,20);
                     if (textScore!=null){
-                        textScore.FillColor = Color.Blue;
+                        textScore.FillColor = new Color(255,223,0);
                         textScore.Style = Text.Styles.Bold | Text.Styles.Italic;
                         textScore.Position = new Vector2f(left+(m_cell_size*NB_COLUMNS+1),top);
                         window.Draw(textScore);
@@ -954,7 +1023,7 @@ namespace SfmlTetris
                 if (window != null){
                     int offSetY = (bottom - top) / 6;
                     int yLin = offSetY;
-                    Text txt = new Text("TETRIS", myFont, 40);
+                    Text txt = new Text("TETRIS", myFont, 32);
                     if ((m_i_color % 2)==0){
                         txt.FillColor = new Color(254, 238, 72, 255);
                     }else{
