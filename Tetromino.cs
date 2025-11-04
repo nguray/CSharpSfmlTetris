@@ -54,8 +54,8 @@ namespace SfmlTetris
 
             foreach (var v in vectors)
             {
-                var vx = (v.X + this.x) * Globals.cellSize + Globals.LEFT;
-                var vy = (v.Y + this.y) * Globals.cellSize + Globals.TOP;
+                var vx = v.X * Globals.cellSize + this.x + Globals.LEFT;
+                var vy = v.Y * Globals.cellSize + this.y + Globals.TOP;
                 r1.Position = new Vector2f(vx + 1, vy + 1);
                 window.Draw(r1);
             }            

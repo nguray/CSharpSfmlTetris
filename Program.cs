@@ -56,20 +56,17 @@ namespace SfmlTetris
 
             private GameMode m_mode = GameMode.STANDBY;
 
-            private int left,top,right,bottom;
-            private List<int> m_table = new List<int>();
+            private int left, top, right, bottom;
+            
             private int m_cell_size = 5;
             private int m_score = 0;
             private int m_idHightScore = -1;
-
-            private int m_speed = 500;
 
             private int m_x_center = 0;
 
             private Tetromino? m_curTetromino;
             private Tetromino? m_nextTetromino;
             private Clock m_clock = new Clock();
-            private Random m_random = new Random();
 
             private VideoMode mode;            
             private RenderWindow? window;
@@ -82,14 +79,31 @@ namespace SfmlTetris
 
             private List<HighScore> m_highScores = new List<HighScore>();
 
+            private Int32  m_idHighScore = -1;
             private String m_playerName="";
-
             private uint m_i_color = 0;
-            private int m_velocityH = 0;
 
-            private int m_last_updateV = 0;
-            private int m_last_updateH = 0;
-            private int m_last_update_next = 0;
+            private int VelH = 0;
+            private bool fFastDown = false;
+            private bool fDrop = false;
+
+
+            public static bool m_fFastDown = false;
+            public static bool m_fDrop = false;
+            public static Int32 m_nbCompletedLines = 0;
+            Int32 iColorHighScore = 0;
+
+            public static int[] m_board = new int[Globals.NB_COLUMNS*Globals.NB_ROWS];
+
+            public static Int32 m_horizontalMove = 0;
+            public static Int32 m_horizontalStartColumn = 0;
+
+            public delegate bool IsOutLimit_t();
+            static IsOutLimit_t? IsOutLimit;
+
+
+            static public Int32 idTetrominoBag = 14;
+            static public Int32[] tetrominoBag = {1,2,3,4,5,6,7,1,2,3,4,5,6,7};  
 
             private delegate void ProcessKey(object? sender, SFML.Window.KeyEventArgs e);
 
@@ -123,6 +137,147 @@ namespace SfmlTetris
                 m_mode = GameMode.GAME_OVER;
                 processKeyPressedProc = processKeyPressedGameOverMode;
                 processKeyReleasedProc = processKeyReleasedGameOverMode;                
+            }
+
+
+            private void InitGame(){
+
+                m_score = 0;
+
+                for(int i=0;i<m_board.Length;i++){
+                    m_board[i] = 0;
+                }
+
+                m_curTetromino = null;
+                m_nextTetromino = new Tetromino(TetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
+
+            }
+
+            private void NewTetromino(){
+
+                m_curTetromino = m_nextTetromino;
+                m_curTetromino.x = 6 * Globals.cellSize;
+                m_curTetromino.y = 0;
+                m_curTetromino.y = -m_curTetromino.MaxY1() * Globals.cellSize;
+                m_nextTetromino = new Tetromino(TetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
+
+            }
+
+            private void DrawBoard(RenderWindow window){
+
+                var a = Globals.cellSize - 2;
+                RectangleShape r1 = new RectangleShape(new Vector2f( a, a));
+
+                for(int l=0;l<Globals.NB_ROWS;l++){
+                    for(int c=0;c<Globals.NB_COLUMNS;c++){
+                        var typ = m_board[l*Globals.NB_COLUMNS+c];
+                        if (typ!=0){
+                            r1.FillColor = Tetromino.Colors[typ];
+                            r1.Position = new Vector2f(c*Globals.cellSize + Globals.LEFT + 1, l*Globals.cellSize + Globals.TOP + 1);
+                            window.Draw(r1);
+                        }
+                    }
+                }
+
+            }
+
+            static Int32 ComputeScore(Int32 nbLines){
+                switch(nbLines){
+                    case 0 :
+                        return 0;
+                    case 1 :
+                        return 40;
+                    case 2 :
+                        return 100;
+                    case 3 :
+                        return 300;
+                    case 4 :
+                        return 1200;
+                    default:
+                        return 2000; 
+                }
+            }
+
+
+            static Int32 ComputeCompledLines(){
+
+                Int32 nbLines = 0;
+                bool fCompleted = false;
+                for(int r=0;r<Globals.NB_ROWS;r++){
+                    fCompleted = true;
+                    for(int c=0;c<Globals.NB_COLUMNS;c++){
+                        if (m_board[r*Globals.NB_COLUMNS+c]==0){
+                            fCompleted = false;
+                            break;
+                        }
+                    }
+                    if (fCompleted){
+                        nbLines++;
+                    }
+                }
+                return nbLines;
+            }
+
+            static void EraseFirstCompletedLine(){
+                //---------------------------------------------------
+                bool fCompleted = false;
+                for(int r=0;r<Globals.NB_ROWS;r++){
+                    fCompleted = true;
+                    for(int c=0;c<Globals.NB_COLUMNS;c++){
+                        if (m_board[r*Globals.NB_COLUMNS+c]==0){
+                            fCompleted = false;
+                            break;
+                        }
+                    }
+                    if (fCompleted){
+                        //-- Décaler d'une ligne le plateau
+                        for(int r1=r;r1>0;r1--){
+                            for(int c1=0;c1<Globals.NB_COLUMNS;c1++){
+                                m_board[r1*Globals.NB_COLUMNS+c1] = m_board[(r1-1)*Globals.NB_COLUMNS+c1];
+                            }
+                        }
+                        return;
+                    }
+                }
+            } 
+
+
+            private void FreezeCurTetromino()
+            {
+                //----------------------------------------------------
+                if (m_curTetromino != null)
+                {
+                    var ix = (m_curTetromino.x + 1) / Globals.cellSize;
+                    var iy = (m_curTetromino.y + 1) / Globals.cellSize;
+                    foreach (var v in m_curTetromino.vectors)
+                    {
+                        var x = v.X + ix;
+                        var y = v.Y + iy;
+                        if ((x >= 0) && (x < Globals.NB_COLUMNS) && (y >= 0) && (y < Globals.NB_ROWS))
+                        {
+                            m_board[y * Globals.NB_COLUMNS + x] = m_curTetromino.type;
+                        }
+                    }
+                    //--
+                    m_nbCompletedLines = ComputeCompledLines();
+                    if (m_nbCompletedLines > 0)
+                    {
+                        m_score += ComputeScore(m_nbCompletedLines);
+
+                    }
+                }
+
+            }
+
+            public static bool isGameOver()
+            {
+                //----------------------------------------
+                for(int c=0;c<Globals.NB_COLUMNS;c++){
+                    if (m_board[c]!=0){
+                        return true;
+                    }
+                }
+                return false;
             }
 
             public void Run()
@@ -236,14 +391,21 @@ namespace SfmlTetris
                 //-- Get board size
                 Vector2u s = window.Size;
 
-                left = Globals.cellSize;
+                left = Globals.LEFT;
                 right = left + Globals.cellSize * Globals.NB_COLUMNS;
                 m_x_center = (int)(left + Globals.cellSize * Globals.NB_COLUMNS / 2);
-                top = m_cell_size;
+                top = Globals.TOP;
                 bottom = top + m_cell_size * Globals.NB_ROWS;
 
+                DateTime randSeed = DateTime.Now;
+                Globals.rand = new Random(randSeed.Millisecond);
+
                 //-- Init Game
-                init();
+
+                InitGame();
+
+                loadHighScores();
+
 
                 window.Closed += (StringReader, args) => endGame();
                 window.KeyReleased += OnKeyReleased;
@@ -252,12 +414,297 @@ namespace SfmlTetris
 
                 SetStandbyMode();
 
+                int startTimeV = m_clock.ElapsedTime.AsMilliseconds();
+                int startTimeH = startTimeV;
+                int startTimeR = startTimeV;
+
+                int curTime = 0;
+
+
                 while (window.IsOpen)
                 {
+
+
+                    window.Clear(new Color(64, 64, 255));
+
+                    RectangleShape r0 = new RectangleShape(new Vector2f(Globals.NB_COLUMNS * Globals.cellSize, Globals.NB_ROWS * Globals.cellSize));
+                    r0.Position = new Vector2f(Globals.LEFT, Globals.TOP);
+                    r0.FillColor = new Color(10, 10, 100);
+                    window.Draw(r0);
+
                     //--
                     window.DispatchEvents();
-                    update();
-                    draw();
+
+                    if (m_mode == GameMode.PLAY)
+                    {
+
+                        if (m_curTetromino != null)
+                        {
+
+                            if (m_nbCompletedLines > 0)
+                            {
+                                curTime = m_clock.ElapsedTime.AsMilliseconds();
+                                if ((curTime - startTimeV) > 500)
+                                {
+                                    startTimeV = curTime;
+                                    m_nbCompletedLines--;
+                                    EraseFirstCompletedLine();
+                                    if (succesSound != null)
+                                    {
+                                        succesSound.Play();
+                                    }
+                                }
+
+                            }
+                            else if (m_horizontalMove != 0)
+                            {
+
+                                curTime = m_clock.ElapsedTime.AsMilliseconds();
+
+                                if ((curTime - startTimeH) > 20)
+                                {
+                                    for (int i = 0; i < 5; i++)
+                                    {
+
+                                        var backupX = m_curTetromino.x;
+                                        m_curTetromino.x += m_horizontalMove;
+                                        //Console.WriteLine(horizontalMove);
+                                        if (IsOutLimit())
+                                        {
+                                            m_curTetromino.x = backupX;
+                                            m_horizontalMove = 0;
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            if (m_curTetromino.HitGround(m_board))
+                                            {
+                                                m_curTetromino.x = backupX;
+                                                m_horizontalMove = 0;
+                                                break;
+                                            }
+                                        }
+
+                                        if (m_horizontalMove != 0)
+                                        {
+                                            startTimeH = curTime;
+                                            if (m_horizontalStartColumn != m_curTetromino.Column())
+                                            {
+                                                m_curTetromino.x = backupX;
+                                                m_horizontalMove = 0;
+                                                break;
+                                            }
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                            else if (fDrop)
+                            {
+
+                                curTime = m_clock.ElapsedTime.AsMilliseconds();
+                                if ((curTime - startTimeV) > 10)
+                                {
+                                    startTimeV = curTime;
+                                    for (int i = 0; i < 6; i++)
+                                    {
+                                        //-- Move down to Check
+                                        m_curTetromino.y++;
+                                        if (m_curTetromino.HitGround(m_board))
+                                        {
+                                            m_curTetromino.y--;
+                                            FreezeCurTetromino();
+                                            NewTetromino();
+                                            fDrop = false;
+                                        }
+                                        else if (m_curTetromino.IsOutBottom())
+                                        {
+                                            m_curTetromino.y--;
+                                            FreezeCurTetromino();
+                                            NewTetromino();
+                                            fDrop = false;
+                                        }
+                                        if ((fDrop) && (VelH != 0))
+                                        {
+                                            if ((curTime - startTimeH) > 15)
+                                            {
+                                                var backupX = m_curTetromino.x;
+                                                m_curTetromino.x += VelH;
+                                                if (IsOutLimit())
+                                                {
+                                                    m_curTetromino.x = backupX;
+                                                }
+                                                else
+                                                {
+                                                    if (m_curTetromino.HitGround(m_board))
+                                                    {
+                                                        m_curTetromino.x = backupX;
+                                                    }
+                                                    else
+                                                    {
+                                                        m_horizontalMove = VelH;
+                                                        m_horizontalStartColumn = m_curTetromino.Column();
+                                                        break;
+                                                    }
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                }
+
+                            }
+                            else
+                            {
+                                curTime = m_clock.ElapsedTime.AsMilliseconds();
+
+                                int limitElapse;
+                                if (m_fFastDown)
+                                {
+                                    limitElapse = 20;
+                                }
+                                else
+                                {
+                                    limitElapse = 50;
+                                }
+
+                                if ((curTime - startTimeV) > limitElapse)
+                                {
+                                    startTimeV = curTime;
+
+                                    for (int i = 0; i < 4; i++)
+                                    {
+                                        //-- Move down to check
+                                        m_curTetromino.y++;
+                                        var fMove = true;
+                                        if (m_curTetromino.HitGround(m_board))
+                                        {
+                                            m_curTetromino.y--;
+                                            FreezeCurTetromino();
+                                            NewTetromino();
+                                            fMove = false;
+                                        }
+                                        else if (m_curTetromino.IsOutBottom())
+                                        {
+                                            m_curTetromino.y--;
+                                            FreezeCurTetromino();
+                                            NewTetromino();
+                                            fMove = false;
+                                        }
+
+                                        if (fMove)
+                                        {
+                                            if (VelH != 0)
+                                            {
+                                                if ((curTime - startTimeH) > 15)
+                                                {
+
+                                                    var backupX = m_curTetromino.x;
+                                                    m_curTetromino.x += VelH;
+
+                                                    if (IsOutLimit())
+                                                    {
+                                                        m_curTetromino.x = backupX;
+                                                    }
+                                                    else
+                                                    {
+                                                        if (m_curTetromino.HitGround(m_board))
+                                                        {
+                                                            m_curTetromino.x -= VelH;
+                                                        }
+                                                        else
+                                                        {
+                                                            startTimeH = curTime;
+                                                            m_horizontalMove = VelH;
+                                                            m_horizontalStartColumn = m_curTetromino.Column();
+                                                            break;
+                                                        }
+                                                    }
+
+                                                }
+
+                                            }
+                                        }
+
+                                    }
+                                }
+                            }
+
+                        }
+
+                        //--
+                        if (m_curTetromino != null)
+                        {
+                            m_curTetromino.Draw(window);
+                        }
+
+                        //-- Check Game Over
+                        if (isGameOver())
+                        {
+                            m_idHighScore = IsHighScore(m_score);
+                            if (m_idHighScore >= 0)
+                            {
+                                insertHighScore(m_idHighScore, m_playerName, m_score);
+                                SetHighScoresMode();
+                                InitGame();
+                            }
+                            else
+                            {
+                                InitGame();
+                                SetGameOverMode();
+                            }
+
+                        }
+
+                        //--
+                        DrawBoard(window);
+
+                    }
+                    else if (m_mode == GameMode.STANDBY)
+                    {
+
+                        drawStandbyScreen();
+
+                    }
+                    else if (m_mode == GameMode.HIGH_SCORES)
+                    {
+
+                        curTime = m_clock.ElapsedTime.AsMilliseconds();
+                        if ((curTime - startTimeH) > 200)
+                        {
+                            startTimeH = curTime;
+                            iColorHighScore++;
+                        }
+                        drawHighScoresScreen();
+
+                    }
+                    else if (m_mode == GameMode.GAME_OVER)
+                    {
+
+                        drawGameOverScreen();
+
+                    }
+
+                    if (m_nextTetromino != null)
+                    {
+                        curTime = m_clock.ElapsedTime.AsMilliseconds();
+                        if ((curTime - startTimeR) > 500)
+                        {
+                            startTimeR = curTime;
+                            m_nextTetromino.RotateLeft();
+                        }
+                        m_nextTetromino.Draw(window);
+                    }
+
+
+                    //--
+                    drawCurrentScore();
+
+                    //draw();
+                    window.Display();
 
                 }
 
@@ -271,23 +718,6 @@ namespace SfmlTetris
                 }     
                 saveHighScores();
                 if (window!=null) window.Close();
-            }
-
-            void init()
-            {
-                m_table.Clear();
-                for (int r=0;r<Globals.NB_ROWS;r++){
-                    for(int c=0;c<Globals.NB_COLUMNS;c++){
-                        m_table.Add(0);
-                    }
-                }
-                bottom = Globals.cellSize * Globals.NB_ROWS + top;
-                m_score = 0;
-                m_speed = 500;
-                m_curTetromino = null;
-                m_nextTetromino = null;
-                m_last_updateH = 0;
-                m_last_updateV = 0;
             }
 
             void OnKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
@@ -317,42 +747,85 @@ namespace SfmlTetris
                 {
                     m_idHightScore = IsHighScore(m_score);
                     //window.KeyPressed -= OnKeyPressedPlayerMode;
-                    if (m_idHightScore==-1){
+                    if (m_idHightScore == -1)
+                    {
                         SetStandbyMode();
-                    }else{
+                    }
+                    else
+                    {
                         SetHighScoresMode();
                     }
 
-                }else if (e.Code == SFML.Window.Keyboard.Key.Left)
+                }
+                else if (e.Code == SFML.Window.Keyboard.Key.Left)
                 {
-                    m_velocityH = -1;
+                    VelH = -1;
+                    IsOutLimit = m_curTetromino.IsOutLeft;
 
-                }else if (e.Code == SFML.Window.Keyboard.Key.Right)
+                }
+                else if (e.Code == SFML.Window.Keyboard.Key.Right)
                 {
-                     m_velocityH = 1;
+                    VelH = 1;
+                    IsOutLimit = m_curTetromino.IsOutRight;
 
-                }else if (e.Code == SFML.Window.Keyboard.Key.Up)
+                }
+                else if (e.Code == SFML.Window.Keyboard.Key.Up)
                 {
-                    if (m_curTetromino!=null)
+
+                    if (m_curTetromino != null)
                     {
                         m_curTetromino.RotateLeft();
-                        if (checkHit()){
+                        if (m_curTetromino.HitGround(m_board))
+                        {
+                            //-- Undo Rotate
                             m_curTetromino.RotateRight();
                         }
+                        else if (m_curTetromino.IsOutRight())
+                        {
+                            var backupX = m_curTetromino.x;
+                            //-- Move Inside board
+                            while (m_curTetromino.IsOutRight())
+                            {
+                                m_curTetromino.x--;
+                            }
+                            if (m_curTetromino.HitGround(m_board))
+                            {
+                                m_curTetromino.x = backupX;
+                                //-- Undo Rotate
+                                m_curTetromino.RotateRight();
+
+                            }
+                        }
+                        else if (m_curTetromino.IsOutLeft())
+                        {
+                            var backupX = m_curTetromino.x;
+                            //-- Move Inside Board
+                            while (m_curTetromino.IsOutLeft())
+                            {
+                                m_curTetromino.x++;
+                            }
+                            if (m_curTetromino.HitGround(m_board))
+                            {
+                                m_curTetromino.x = backupX;
+                                //-- Undo Rotate
+                                m_curTetromino.RotateRight();
+
+                            }
+
+                        }
+
                     }
 
-                }else if (e.Code == SFML.Window.Keyboard.Key.Down)
+                }
+                else if (e.Code == SFML.Window.Keyboard.Key.Down)
                 {
-                    if (m_curTetromino!=null)
-                    {
-                        m_curTetromino.RotateRight();
-                        if (checkHit())
-                        {
-                            m_curTetromino.RotateLeft();
-                        }
-                    }
-                }else if (e.Code == SFML.Window.Keyboard.Key.Space){
-                    m_mode = GameMode.AUTO;
+                    fFastDown = true;
+
+                }
+                else if (e.Code == SFML.Window.Keyboard.Key.Space)
+                {
+                    fDrop = true;
+
                 }
 
             }
@@ -366,7 +839,8 @@ namespace SfmlTetris
                     case GameMode.PLAY:
                         if ((e.Code == SFML.Window.Keyboard.Key.Left) || (e.Code == SFML.Window.Keyboard.Key.Right))
                         {
-                            m_velocityH = 0;
+                            VelH = 0;
+
                         }
                         break;
                 }
@@ -382,18 +856,10 @@ namespace SfmlTetris
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
                 if (e.Code == SFML.Window.Keyboard.Key.Space){
-                   init();
-                    m_curTetromino = new Tetromino(m_random.Next(1,8),Globals.NB_COLUMNS/2,0);
-                    //m_curBrick.AjustStartY();
-
-                    m_nextTetromino = new Tetromino(m_random.Next(1,8),Globals.NB_COLUMNS+3,Globals.NB_ROWS/2);
-                    //m_nextBrick.AjustStartY();
-
                     m_clock.Restart();
-                    m_last_updateH = 0;
-                    m_last_updateV = 0;
                     SetPlayMode();
- 
+                    NewTetromino();
+
                 }else if (e.Code == SFML.Window.Keyboard.Key.Escape){
                     endGame();
 
@@ -418,7 +884,7 @@ namespace SfmlTetris
                     m_mode = GameMode.STANDBY;
                     //window.KeyPressed += OnKeyPressedStandby;
 
-                    init();
+                    //init();
                     updateHighScores("-----",m_score);
 
                 }else if (e.Code == SFML.Window.Keyboard.Key.Escape){
@@ -484,285 +950,155 @@ namespace SfmlTetris
 
             //--------------------------------------------------------------------
             //--
-            private void update()
-            {
-                if ((m_curTetromino != null) && (window != null))
-                {
-
-                    if (m_mode == GameMode.PLAY)
-                    {
-                        var r = m_clock.ElapsedTime.AsMilliseconds();
-
-                        if ((r - m_last_update_next) > 500)
-                        {
-                            m_last_update_next = r;
-                            if (m_nextTetromino!=null)
-                            {
-                                m_nextTetromino.RotateLeft();                            
-                            }
-                        }
-
-                        if ((r - m_last_updateV) > m_speed)
-                        {
-                            m_last_updateV = r;
-
-                            m_curTetromino.x += m_velocityH;
-                            if (checkHit())
-                            {
-                                m_curTetromino.x -= m_velocityH;
-                            }
-                            else
-                            {
-                                m_last_updateH = r;
-                            }
-
-                            m_curTetromino.y++;
-                            if (checkHit())
-                            {
-                                m_curTetromino.y--;
-                                setBrick();
-                                m_curTetromino = m_nextTetromino;
-                                m_nextTetromino = new Tetromino(m_random.Next(1, 8),Globals.NB_COLUMNS/2,Globals.NB_ROWS/2);
-                                //m_nextBrick.AjustStartY();
-                                if (checkHit())
-                                {
-                                    if (isGameOver())
-                                    {
-                                        m_idHightScore = IsHighScore(m_score);
-                                        if (m_idHightScore == -1)
-                                        {
-                                            SetGameOverMode();
-                                        }
-                                        else
-                                        {
-                                            SetHighScoresMode();
-                                        }
-
-                                    }
-
-                                }
-
-                            }
-                        }
-                        else
-                        {
-                            if ((r - m_last_updateH) > 80)
-                            {
-                                m_curTetromino.x += m_velocityH;
-                                if (checkHit())
-                                {
-                                    m_curTetromino.x -= m_velocityH;
-                                }
-                                else
-                                {
-                                    m_last_updateH = r;
-                                }
-
-                            }
-
-                        }
-
-                        //--
-                        var nbL = clearCompletedLines();
-                        if (nbL != 0)
-                        {
-                            if (succesSound != null) succesSound.Play();
-                            switch (nbL)
-                            {
-                                case 1:
-                                    m_score += 40;
-                                    break;
-                                case 2:
-                                    m_score += 100;
-                                    break;
-                                case 3:
-                                    m_score += 300;
-                                    break;
-                                case 4:
-                                    m_score += 1200;
-                                    break;
-                            }
-
-                        }
 
 
+            // private void draw()
+            // {
+            //     //----------------------------------------
+            //     if (window!=null){
 
-                    }
-                    else if (m_mode == GameMode.AUTO)
-                    {
+            //         window.Clear(new Color(64,64,255));
 
-                        m_curTetromino.y++;
-                        if (checkHit())
-                        {
-                            m_curTetromino.y--;
-                            setBrick();
-                            m_curTetromino = m_nextTetromino;
-                            m_nextTetromino = new Tetromino(m_random.Next(1, 8),Globals.NB_COLUMNS/2,0);
-                            //m_nextBrick.AjustStartY();
-                            SetPlayMode();
-                        }
-                        //--
-                        var nbL = clearCompletedLines();
-                        if (nbL != 0)
-                        {
-                            if (succesSound != null) succesSound.Play();
-                            switch (nbL)
-                            {
-                                case 1:
-                                    m_score += 40;
-                                    break;
-                                case 2:
-                                    m_score += 100;
-                                    break;
-                                case 3:
-                                    m_score += 300;
-                                    break;
-                                case 4:
-                                    m_score += 1200;
-                                    break;
-                            }
-                        }
+            //         RectangleShape  r0 = new RectangleShape(new Vector2f(Globals.NB_COLUMNS*Globals.cellSize, Globals.NB_ROWS*Globals.cellSize));
+            //         r0.Position  = new Vector2f(Globals.LEFT,Globals.TOP);
+            //         r0.FillColor = new Color(10,10,100);
+            //         window.Draw(r0);
 
-                    }
-                }
-                else if ((m_mode == GameMode.STANDBY) || (m_mode == GameMode.HIGH_SCORES))
-                {
-                    var r = m_clock.ElapsedTime.AsMilliseconds();
-                    if (r > m_speed)
-                    {
-                        m_clock.Restart();
-                        m_i_color++;
-                    }
-                }
+            //         switch(m_mode){
+            //             case GameMode.STANDBY :
+            //                 drawStandbyScreen();
+            //                 break;
+            //             case GameMode.AUTO:
+            //             case GameMode.PLAY:
+            //                 drawCurrentBrick();
+            //                 int     x,y,typ;
+            //                 RectangleShape  r = new RectangleShape(new Vector2f(Globals.cellSize-2, Globals.cellSize-2));
 
-            }
-
-            private void draw()
-            {
-                //----------------------------------------
-                if (window!=null){
-
-                    window.Clear(new Color(64,64,255));
-
-                    RectangleShape  r0 = new RectangleShape(new Vector2f(right-left, bottom-top));
-                    r0.Position  = new Vector2f(left,top);
-                    r0.FillColor = new Color(10,10,100);
-                    window.Draw(r0);
-
-                    switch(m_mode){
-                        case GameMode.STANDBY :
-                            drawStandbyScreen();
-                            break;
-                        case GameMode.AUTO:
-                        case GameMode.PLAY:
-                            drawCurrentBrick();
-                            int     x,y,typ;
-                            RectangleShape  r = new RectangleShape(new Vector2f(Globals.cellSize-2, Globals.cellSize-2));
-
-                            for (int l=0;l<Globals.NB_ROWS;l++){
-                                for(int c=0;c<Globals.NB_COLUMNS;c++){
-                                    x = c*Globals.cellSize + left;
-                                    y = l*Globals.cellSize + top;
-                                    r.Position =  new Vector2f(x+1, y+1);
-                                    typ = m_table[c+l*Globals.NB_COLUMNS];
-                                    if (typ!=0){
-                                        r.FillColor = Tetromino.Colors[typ];
-                                        window.Draw(r);
-                                    }                              
+            //                 for (int l=0;l<Globals.NB_ROWS;l++){
+            //                     for(int c=0;c<Globals.NB_COLUMNS;c++){
+            //                         x = c*Globals.cellSize + Globals.LEFT;
+            //                         y = l*Globals.cellSize + Globals.TOP;
+            //                         r.Position =  new Vector2f(x+1, y+1);
+            //                         typ = m_table[c+l*Globals.NB_COLUMNS];
+            //                         if (typ!=0){
+            //                             r.FillColor = Tetromino.Colors[typ];
+            //                             window.Draw(r);
+            //                         }                              
                                     
-                                }
-                            }
-                            drawCurrentScore();
-                            drawNextBrick();
-                            break;
+            //                     }
+            //                 }
+            //                 drawCurrentScore();
+            //                 drawNextBrick();
+            //                 break;
 
-                        case GameMode.HIGH_SCORES:
-                            drawHighScoresScreen();
-                            break;
-                        case GameMode.GAME_OVER:
-                            drawGameOverScreen();
-                            //drawCurrentScore();
-                            break;
+            //             case GameMode.HIGH_SCORES:
+            //                 drawHighScoresScreen();
+            //                 break;
+            //             case GameMode.GAME_OVER:
+            //                 drawGameOverScreen();
+            //                 //drawCurrentScore();
+            //                 break;
+            //         }
+
+            //         window.Display();
+
+            //     }
+            // }
+
+            // bool isGameOver()
+            // {
+            //     //----------------------------------------
+            //     for(int c=0;c<Globals.NB_COLUMNS;c++){
+            //         if (m_table[c]!=0){
+            //             return true;
+            //         }
+            //     }
+            //     return false;
+
+            // }
+
+            // bool checkHit()
+            // {
+            //     int     x,y;
+            //     //-------------------------------------------
+            //     if (m_curTetromino is not null){
+            //         foreach (var v in m_curTetromino.vectors){
+            //             x = v.X + m_curTetromino.x;
+            //             y = v.Y + m_curTetromino.y;
+            //             if ((x<0)||(x>=Globals.NB_COLUMNS)||(y<0)||(y>=Globals.NB_ROWS)){
+            //                 return true;
+            //             }else if (m_table[x+y*Globals.NB_COLUMNS]!=0){
+            //                 return true;
+            //             }
+            //         }
+            //     }
+            //     return false;
+            // }
+
+            // void setBrick()
+            // {
+            //     int     x,y;
+            //     //-------------------------------------------
+            //     if (m_curTetromino!=null){
+            //         foreach (var v in m_curTetromino.vectors){
+            //             x = v.X + m_curTetromino.x;
+            //             y = v.Y + m_curTetromino.y;
+            //             m_table[x+y*Globals.NB_COLUMNS] = m_curTetromino.type;
+            //         }
+            //     }
+            // }
+
+            // int clearCompletedLines()
+            // {
+            //     int     nbL=0;
+            //     bool    fCompleted=false;
+            //     //-------------------------------------------
+            //     for (int l=0;l<Globals.NB_ROWS;l++){
+            //         fCompleted = true;
+            //         for(int c=0;c<Globals.NB_COLUMNS;c++){
+            //             if (m_table[c+l*Globals.NB_COLUMNS]==0){
+            //                 fCompleted = false;
+            //                 break;
+            //             }
+            //         }
+            //         if (fCompleted){
+            //             nbL++;
+            //             if (l==0){
+            //                 for(int c=0;c<Globals.NB_COLUMNS;c++){
+            //                     m_table[c+l*Globals.NB_COLUMNS] = 0;
+            //                 }
+            //             }else{
+            //                 //-- Décaler les lignes au dessus sur la ligne courante
+            //                 for(int l1=l;l1>0;l1--){
+            //                     for(int c=0;c<Globals.NB_COLUMNS;c++){
+            //                         m_table[c+l1*Globals.NB_COLUMNS] = m_table[c+(l1-1)*Globals.NB_COLUMNS];
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     }
+            //     return nbL;
+            // }
+
+            static Int32 TetrisRandomizer(){
+                Int32 iSrc;
+                Int32 iTyp=0;
+                if (idTetrominoBag<14){
+                    iTyp = tetrominoBag[idTetrominoBag];
+                    idTetrominoBag++;
+                }else{
+                    //-- Shuttle bag
+                    for(int i=0;i<tetrominoBag.Length;i++){
+                        iSrc = Globals.rand.Next(0,14);
+                        iTyp = tetrominoBag[iSrc];
+                        tetrominoBag[iSrc] = tetrominoBag[0];
+                        tetrominoBag[0] = iTyp;
                     }
-
-                    window.Display();
+                    iTyp =tetrominoBag[0];
+                    idTetrominoBag = 1;
 
                 }
-            }
-
-            bool isGameOver()
-            {
-                //----------------------------------------
-                for(int c=0;c<Globals.NB_COLUMNS;c++){
-                    if (m_table[c]!=0){
-                        return true;
-                    }
-                }
-                return false;
-
-            }
-
-            bool checkHit()
-            {
-                int     x,y;
-                //-------------------------------------------
-                if (m_curTetromino is not null){
-                    foreach (var v in m_curTetromino.vectors){
-                        x = v.X + m_curTetromino.x;
-                        y = v.Y + m_curTetromino.y;
-                        if ((x<0)||(x>=Globals.NB_COLUMNS)||(y<0)||(y>=Globals.NB_ROWS)){
-                            return true;
-                        }else if (m_table[x+y*Globals.NB_COLUMNS]!=0){
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-
-            void setBrick()
-            {
-                int     x,y;
-                //-------------------------------------------
-                if (m_curTetromino!=null){
-                    foreach (var v in m_curTetromino.vectors){
-                        x = v.X + m_curTetromino.x;
-                        y = v.Y + m_curTetromino.y;
-                        m_table[x+y*Globals.NB_COLUMNS] = m_curTetromino.type;
-                    }
-                }
-            }
-
-            int clearCompletedLines()
-            {
-                int     nbL=0;
-                bool    fCompleted=false;
-                //-------------------------------------------
-                for (int l=0;l<Globals.NB_ROWS;l++){
-                    fCompleted = true;
-                    for(int c=0;c<Globals.NB_COLUMNS;c++){
-                        if (m_table[c+l*Globals.NB_COLUMNS]==0){
-                            fCompleted = false;
-                            break;
-                        }
-                    }
-                    if (fCompleted){
-                        nbL++;
-                        if (l==0){
-                            for(int c=0;c<Globals.NB_COLUMNS;c++){
-                                m_table[c+l*Globals.NB_COLUMNS] = 0;
-                            }
-                        }else{
-                            //-- Décaler les lignes au dessus sur la ligne courante
-                            for(int l1=l;l1>0;l1--){
-                                for(int c=0;c<Globals.NB_COLUMNS;c++){
-                                    m_table[c+l1*Globals.NB_COLUMNS] = m_table[c+(l1-1)*Globals.NB_COLUMNS];
-                                }
-                            }
-                        }
-                    }
-                }
-                return nbL;
+                return iTyp;
             }
 
             private (string Name, int score) ParseHighScore(string line)
@@ -771,8 +1107,8 @@ namespace SfmlTetris
                 char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
                 string[] words = line.Split(delimiterChars);
                 string n = words[0];
-                int    s = int.Parse(words[1]);
-                return (n,s);
+                int s = int.Parse(words[1]);
+                return (n, s);
 
             } 
 
@@ -952,48 +1288,6 @@ namespace SfmlTetris
                 }
             }
 
-            void drawCurrentBrick()
-            {
-                int x,y;
-                //-------------------------------------------
-                if ((m_curTetromino!=null)&&(window != null)){
-                    m_curTetromino.Draw(window);
-                    // RectangleShape r1 = new RectangleShape(new Vector2f(m_cell_size - 2, m_cell_size - 2));
-                    // r1.FillColor = m_curTetromino.color;
-
-                    // foreach (var v in m_curTetromino.vectors)
-                    // {
-                    //     x = (v.X + m_curTetromino.x) * Globals.cellSize + Globals.LEFT;
-                    //     y = (v.Y + m_curTetromino.y) * Globals.cellSize + Globals.TOP;
-                    //     r1.Position = new Vector2f(x + 1, y + 1);
-                    //     window.Draw(r1);
-                    // }
-                }
-
-            }
-
-            void drawNextBrick()
-            {
-                int x,y;
-                //-------------------------------------------
-                if ((m_nextTetromino!=null)&&(window != null)){
-                    m_nextTetromino.Draw(window);
-                    // RectangleShape r1 = new RectangleShape(new Vector2f(Globals.cellSize - 2, Globals.cellSize - 2));
-                    // r1.FillColor = m_nextTetromino.color;
-
-                    // int iposX = Globals.NB_COLUMNS+3;
-                    // int iposY = 10;
-                    // foreach (var v in m_nextTetromino.vectors)
-                    // {
-                    //     x = (v.X + iposX) * Globals.cellSize + Globals.LEFT;
-                    //     y = (v.Y + iposY) * Globals.cellSize + Globals.WIN_HEIGHT;
-                    //     r1.Position = new Vector2f(x + 1, y + 1);
-                    //     window.Draw(r1);
-                    // }
-                }
-
-            }
-
             void drawHightScoreInputScreen()
             {
                 //-------------------------------------------
@@ -1036,7 +1330,7 @@ namespace SfmlTetris
             {
                 //-------------------------------------------
                 if (window != null){
-                    int offSetY = (bottom - top) / 6;
+                    int offSetY = Globals.TOP + 3*Globals.cellSize;
                     int yLin = offSetY;
                     Text txt = new Text("TETRIS", myFont, 24);
                     if ((m_i_color % 2)==0){
