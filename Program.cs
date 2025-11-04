@@ -49,7 +49,6 @@ namespace SfmlTetris
             enum GameMode {
                 STANDBY=0,
                 PLAY,
-                AUTO,
                 HIGH_SCORES,
                 GAME_OVER
             }
@@ -58,7 +57,6 @@ namespace SfmlTetris
 
             private int left, top, right, bottom;
             
-            private int m_cell_size = 5;
             private int m_score = 0;
             private int m_idHightScore = -1;
 
@@ -110,11 +108,15 @@ namespace SfmlTetris
             private ProcessKey? processKeyPressedProc;
             private ProcessKey? processKeyReleasedProc;
 
+            private int startTimeV = 0;
+            private int startTimeH = 0;
+            private int startTimeR = 0;
+
             public void SetStandbyMode()
             {
                 m_mode = GameMode.STANDBY;
                 processKeyPressedProc = processKeyPressedStandbyMode;
-                processKeyReleasedProc = processKeyReleasedStandbyMode;                
+                processKeyReleasedProc = processKeyReleasedStandbyMode;
             }
 
             public void SetPlayMode()
@@ -147,14 +149,17 @@ namespace SfmlTetris
                 for(int i=0;i<m_board.Length;i++){
                     m_board[i] = 0;
                 }
-
-                m_curTetromino = null;
-                m_nextTetromino = new Tetromino(TetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
+                startTimeV = m_clock.ElapsedTime.AsMilliseconds();
+                startTimeH = startTimeV;
+                startTimeR = startTimeV;
 
             }
 
             private void NewTetromino(){
-
+                if (m_nextTetromino==null)
+                {
+                    m_nextTetromino = new Tetromino(TetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
+                }
                 m_curTetromino = m_nextTetromino;
                 m_curTetromino.x = 6 * Globals.cellSize;
                 m_curTetromino.y = 0;
@@ -269,7 +274,7 @@ namespace SfmlTetris
 
             }
 
-            public static bool isGameOver()
+            private bool isGameOver()
             {
                 //----------------------------------------
                 for(int c=0;c<Globals.NB_COLUMNS;c++){
@@ -279,6 +284,101 @@ namespace SfmlTetris
                 }
                 return false;
             }
+
+            private (string Name, int score) ParseHighScore(string line)
+            {
+                //------------------------------------------------------                
+                char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
+                string[] words = line.Split(delimiterChars);
+                string n = words[0];
+                int    s = int.Parse(words[1]);
+                return (n,s);
+
+            } 
+
+            private void loadHighScores()
+            {
+                int     iLine = 0;
+                string  name;
+                int     score;
+                string  path = @"HighScores.txt";
+                //------------------------------------------------------
+                if (File.Exists(path))
+                {
+                    try
+                    {
+                        
+                        m_highScores.Clear();
+
+                        foreach (string line in System.IO.File.ReadLines(path))
+                        {
+                            //--
+                            (name, score) = ParseHighScore( line);
+                            m_highScores.Add(new HighScore(name,score));
+                            //--
+                            iLine++;
+                            if (iLine>9) break;
+
+                        }
+                    }
+                    catch (FileNotFoundException uAEx)
+                    {
+                        Console.WriteLine(uAEx.Message);
+                    }
+                }
+            }
+
+            private void WriteScoreLine(FileStream fs, string value)
+            {
+                //------------------------------------------------------
+                byte[] info = new UTF8Encoding(true).GetBytes(value);
+                fs.Write(info, 0, info.Length);
+            }
+
+            private void saveHighScores()
+            {
+                string path = @"HighScores.txt";
+                //------------------------------------------------------
+                // Delete the file if it exists.
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+
+                using (FileStream fs = File.Create(path))
+                {
+                    String lin;
+                    foreach ( var h in m_highScores ){
+                        lin = String.Format("{0},{1}\n", h.Name, h.Score);
+                        WriteScoreLine(fs, lin);
+                    }
+
+                }
+
+                
+            }
+
+            private void insertHighScore(int id,String name,int score){
+                if ((id>=0)&&(id<10)){
+                    m_highScores.Insert(id, new HighScore(name, score));
+                    if (m_highScores.Count>10){
+                        m_highScores.RemoveAt(m_highScores.Count-1);
+                    }
+                }
+            }
+
+            private Int32 IsHighScore(int score)
+            {
+                //---------------------------------------------------
+                for (int i=0;i<10;i++){
+                    if (score>m_highScores[i].Score){
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+
 
             public void Run()
             {
@@ -395,7 +495,7 @@ namespace SfmlTetris
                 right = left + Globals.cellSize * Globals.NB_COLUMNS;
                 m_x_center = (int)(left + Globals.cellSize * Globals.NB_COLUMNS / 2);
                 top = Globals.TOP;
-                bottom = top + m_cell_size * Globals.NB_ROWS;
+                bottom = top + Globals.cellSize * Globals.NB_ROWS;
 
                 DateTime randSeed = DateTime.Now;
                 Globals.rand = new Random(randSeed.Millisecond);
@@ -414,12 +514,8 @@ namespace SfmlTetris
 
                 SetStandbyMode();
 
-                int startTimeV = m_clock.ElapsedTime.AsMilliseconds();
-                int startTimeH = startTimeV;
-                int startTimeR = startTimeV;
 
                 int curTime = 0;
-
 
                 while (window.IsOpen)
                 {
@@ -440,7 +536,6 @@ namespace SfmlTetris
 
                         if (m_curTetromino != null)
                         {
-
                             if (m_nbCompletedLines > 0)
                             {
                                 curTime = m_clock.ElapsedTime.AsMilliseconds();
@@ -561,21 +656,14 @@ namespace SfmlTetris
                             {
                                 curTime = m_clock.ElapsedTime.AsMilliseconds();
 
-                                int limitElapse;
-                                if (m_fFastDown)
-                                {
-                                    limitElapse = 20;
-                                }
-                                else
-                                {
-                                    limitElapse = 50;
-                                }
+                                int limitElapse = fFastDown ? 10 : 30;
 
                                 if ((curTime - startTimeV) > limitElapse)
                                 {
+
                                     startTimeV = curTime;
 
-                                    for (int i = 0; i < 4; i++)
+                                    for (int i = 0; i < 3; i++)
                                     {
                                         //-- Move down to check
                                         m_curTetromino.y++;
@@ -743,17 +831,20 @@ namespace SfmlTetris
                 //----------------------------------------------
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
+                if (m_curTetromino==null) return;
                 if (e.Code == SFML.Window.Keyboard.Key.Escape)
                 {
-                    m_idHightScore = IsHighScore(m_score);
-                    //window.KeyPressed -= OnKeyPressedPlayerMode;
-                    if (m_idHightScore == -1)
+                    m_idHighScore = IsHighScore(m_score);
+                    if (m_idHighScore >= 0)
                     {
-                        SetStandbyMode();
+                        insertHighScore(m_idHighScore, m_playerName, m_score);
+                        SetHighScoresMode();
+                        InitGame();
                     }
                     else
                     {
-                        SetHighScoresMode();
+                        InitGame();
+                        SetGameOverMode();
                     }
 
                 }
@@ -842,6 +933,11 @@ namespace SfmlTetris
                             VelH = 0;
 
                         }
+                        else if (e.Code == SFML.Window.Keyboard.Key.Down)
+                        {
+                            fFastDown = false;
+
+                        }
                         break;
                 }
 
@@ -856,7 +952,7 @@ namespace SfmlTetris
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
                 if (e.Code == SFML.Window.Keyboard.Key.Space){
-                    m_clock.Restart();
+                    //m_clock.Restart();
                     SetPlayMode();
                     NewTetromino();
 
@@ -880,12 +976,7 @@ namespace SfmlTetris
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
                 if (e.Code == SFML.Window.Keyboard.Key.Space){
-                    //window.KeyPressed -= OnKeyPressedGameOverMode;
-                    m_mode = GameMode.STANDBY;
-                    //window.KeyPressed += OnKeyPressedStandby;
-
-                    //init();
-                    updateHighScores("-----",m_score);
+                    SetStandbyMode();
 
                 }else if (e.Code == SFML.Window.Keyboard.Key.Escape){
                     endGame();
@@ -908,15 +999,20 @@ namespace SfmlTetris
                 if (sender==null) return;
                 var window = (SFML.Window.Window) sender;
 
-                if (e.Code == SFML.Window.Keyboard.Key.Enter){
-                    insertHighScore(m_idHightScore, m_playerName, m_score);
+                if ((e.Code == SFML.Window.Keyboard.Key.Enter)||(e.Code == SFML.Window.Keyboard.Key.Escape)){
                     SetStandbyMode();
                     m_curTetromino = null;
-                    m_playerName = "";
+                    if (m_playerName.Length==0){
+                        m_playerName = "XXXXXX";
+                    }
+                    m_highScores[m_idHighScore].Name = m_playerName;
+                    saveHighScores();
+                    m_idHighScore = -1;
                 }else if (e.Code == SFML.Window.Keyboard.Key.Space){
                     if ((m_playerName==null)||(m_playerName.Length<8)){
                         m_playerName += "_";
                     }
+                    m_highScores[m_idHighScore].Name = m_playerName;
                 }else if (e.Code==SFML.Window.Keyboard.Key.Backspace){
                     if (m_playerName!=null){
                         if (m_playerName.Length==1){
@@ -924,21 +1020,35 @@ namespace SfmlTetris
                         }else if (m_playerName.Length>1){
                             m_playerName = m_playerName.Substring(0,m_playerName.Length-1);
                         }
+                        m_highScores[m_idHighScore].Name = m_playerName;
                     }                        
                 }else{
-                    if ((m_playerName==null)||(m_playerName.Length<8)){
+                    if ((m_playerName!=null)&&(m_playerName.Length<8)){
 
-                        if ((e.Code>=SFML.Window.Keyboard.Key.Num0)&&(e.Code<=SFML.Window.Keyboard.Key.Num9)){
-                            char c = (char)  ((int)'0' + e.Code - SFML.Window.Keyboard.Key.Num0);
-                            m_playerName += c;
-                        }else if ((e.Code>=SFML.Window.Keyboard.Key.Numpad0)&&(e.Code<=SFML.Window.Keyboard.Key.Numpad9)){
-                            char c = (char)  ((int)'0' + e.Code - SFML.Window.Keyboard.Key.Numpad0);
-                            m_playerName += c;
-
-                        }else  if ((e.Code>=SFML.Window.Keyboard.Key.A)&&(e.Code<=SFML.Window.Keyboard.Key.Z)){
-                            char c = (char)  ((int)'A' + e.Code - SFML.Window.Keyboard.Key.A);
-                            m_playerName += c;
+                        if ((e.Code >= SFML.Window.Keyboard.Key.Num0) && (e.Code <= SFML.Window.Keyboard.Key.Num9))
+                        {
+                            char c = (char)((int)'0' + e.Code - SFML.Window.Keyboard.Key.Num0);
+                            if (m_playerName.Length<8){
+                                m_playerName += c;
+                            }
                         }
+                        else if ((e.Code >= SFML.Window.Keyboard.Key.Numpad0) && (e.Code <= SFML.Window.Keyboard.Key.Numpad9))
+                        {
+                            char c = (char)((int)'0' + e.Code - SFML.Window.Keyboard.Key.Numpad0);
+                            if (m_playerName.Length<8){
+                                m_playerName += c;
+                            }
+
+                        }
+                        else if ((e.Code >= SFML.Window.Keyboard.Key.A) && (e.Code <= SFML.Window.Keyboard.Key.Z))
+                        {
+                            char c = (char)((int)'A' + e.Code - SFML.Window.Keyboard.Key.A);
+                            if (m_playerName.Length<8){
+                                m_playerName += c;
+                            }
+                        }
+                        m_highScores[m_idHighScore].Name = m_playerName;
+ 
                     }
                 }
                
@@ -950,136 +1060,6 @@ namespace SfmlTetris
 
             //--------------------------------------------------------------------
             //--
-
-
-            // private void draw()
-            // {
-            //     //----------------------------------------
-            //     if (window!=null){
-
-            //         window.Clear(new Color(64,64,255));
-
-            //         RectangleShape  r0 = new RectangleShape(new Vector2f(Globals.NB_COLUMNS*Globals.cellSize, Globals.NB_ROWS*Globals.cellSize));
-            //         r0.Position  = new Vector2f(Globals.LEFT,Globals.TOP);
-            //         r0.FillColor = new Color(10,10,100);
-            //         window.Draw(r0);
-
-            //         switch(m_mode){
-            //             case GameMode.STANDBY :
-            //                 drawStandbyScreen();
-            //                 break;
-            //             case GameMode.AUTO:
-            //             case GameMode.PLAY:
-            //                 drawCurrentBrick();
-            //                 int     x,y,typ;
-            //                 RectangleShape  r = new RectangleShape(new Vector2f(Globals.cellSize-2, Globals.cellSize-2));
-
-            //                 for (int l=0;l<Globals.NB_ROWS;l++){
-            //                     for(int c=0;c<Globals.NB_COLUMNS;c++){
-            //                         x = c*Globals.cellSize + Globals.LEFT;
-            //                         y = l*Globals.cellSize + Globals.TOP;
-            //                         r.Position =  new Vector2f(x+1, y+1);
-            //                         typ = m_table[c+l*Globals.NB_COLUMNS];
-            //                         if (typ!=0){
-            //                             r.FillColor = Tetromino.Colors[typ];
-            //                             window.Draw(r);
-            //                         }                              
-                                    
-            //                     }
-            //                 }
-            //                 drawCurrentScore();
-            //                 drawNextBrick();
-            //                 break;
-
-            //             case GameMode.HIGH_SCORES:
-            //                 drawHighScoresScreen();
-            //                 break;
-            //             case GameMode.GAME_OVER:
-            //                 drawGameOverScreen();
-            //                 //drawCurrentScore();
-            //                 break;
-            //         }
-
-            //         window.Display();
-
-            //     }
-            // }
-
-            // bool isGameOver()
-            // {
-            //     //----------------------------------------
-            //     for(int c=0;c<Globals.NB_COLUMNS;c++){
-            //         if (m_table[c]!=0){
-            //             return true;
-            //         }
-            //     }
-            //     return false;
-
-            // }
-
-            // bool checkHit()
-            // {
-            //     int     x,y;
-            //     //-------------------------------------------
-            //     if (m_curTetromino is not null){
-            //         foreach (var v in m_curTetromino.vectors){
-            //             x = v.X + m_curTetromino.x;
-            //             y = v.Y + m_curTetromino.y;
-            //             if ((x<0)||(x>=Globals.NB_COLUMNS)||(y<0)||(y>=Globals.NB_ROWS)){
-            //                 return true;
-            //             }else if (m_table[x+y*Globals.NB_COLUMNS]!=0){
-            //                 return true;
-            //             }
-            //         }
-            //     }
-            //     return false;
-            // }
-
-            // void setBrick()
-            // {
-            //     int     x,y;
-            //     //-------------------------------------------
-            //     if (m_curTetromino!=null){
-            //         foreach (var v in m_curTetromino.vectors){
-            //             x = v.X + m_curTetromino.x;
-            //             y = v.Y + m_curTetromino.y;
-            //             m_table[x+y*Globals.NB_COLUMNS] = m_curTetromino.type;
-            //         }
-            //     }
-            // }
-
-            // int clearCompletedLines()
-            // {
-            //     int     nbL=0;
-            //     bool    fCompleted=false;
-            //     //-------------------------------------------
-            //     for (int l=0;l<Globals.NB_ROWS;l++){
-            //         fCompleted = true;
-            //         for(int c=0;c<Globals.NB_COLUMNS;c++){
-            //             if (m_table[c+l*Globals.NB_COLUMNS]==0){
-            //                 fCompleted = false;
-            //                 break;
-            //             }
-            //         }
-            //         if (fCompleted){
-            //             nbL++;
-            //             if (l==0){
-            //                 for(int c=0;c<Globals.NB_COLUMNS;c++){
-            //                     m_table[c+l*Globals.NB_COLUMNS] = 0;
-            //                 }
-            //             }else{
-            //                 //-- Décaler les lignes au dessus sur la ligne courante
-            //                 for(int l1=l;l1>0;l1--){
-            //                     for(int c=0;c<Globals.NB_COLUMNS;c++){
-            //                         m_table[c+l1*Globals.NB_COLUMNS] = m_table[c+(l1-1)*Globals.NB_COLUMNS];
-            //                     }
-            //                 }
-            //             }
-            //         }
-            //     }
-            //     return nbL;
-            // }
-
             static Int32 TetrisRandomizer(){
                 Int32 iSrc;
                 Int32 iTyp=0;
@@ -1101,127 +1081,13 @@ namespace SfmlTetris
                 return iTyp;
             }
 
-            private (string Name, int score) ParseHighScore(string line)
-            {
-                //------------------------------------------------------                
-                char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
-                string[] words = line.Split(delimiterChars);
-                string n = words[0];
-                int s = int.Parse(words[1]);
-                return (n, s);
-
-            } 
-
-            void loadHighScores()
-            {
-                int     iLine = 0;
-                string  name;
-                int     score;
-                //------------------------------------------------------
-                string filePath = "HighScores.txt";
-                try
-                {
-                    
-                    m_highScores.Clear();
-
-                    foreach (string line in System.IO.File.ReadLines(filePath))
-                    {
-                        //--
-                        (name, score) = ParseHighScore( line);
-                        m_highScores.Add(new HighScore(name,score));
-                        //--
-                        iLine++;
-                        if (iLine>9) break;
-
-                    }
-                }
-                catch (FileNotFoundException uAEx)
-                {
-                    Console.WriteLine(uAEx.Message);
-                    m_highScores.Clear();
-                    for (int i=0; i<10; i++)
-                    {
-                        m_highScores.Add(new HighScore("XXXXXX",0));                        
-                    }
-                }
-            
-            }
-
-            void WriteLine(FileStream fs, string value)
-            {
-                //------------------------------------------------------
-                byte[] info = new UTF8Encoding(true).GetBytes(value);
-                fs.Write(info, 0, info.Length);
-            }
-
-            void saveHighScores()
-            {
-                //------------------------------------------------------
-                // Delete the file if it exists.
-                string filePath = "HighScores.txt";
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                }
-
-                using (FileStream fs = File.Create(filePath))
-                {
-                    String lin;
-                    foreach ( var h in m_highScores ){
-                        lin = String.Format("{0},{1}\n", h.Name, h.Score);
-                        WriteLine(fs, lin);
-                    }
-
-                }
-
-                
-            }
-
-            void updateHighScores(String name,int score)
-            {
-                int idHighScore = -1;
-                //---------------------------------------------------
-                for (int i=0;i<10;i++){
-                    if (score>m_highScores[i].Score){
-                        idHighScore = i;
-                        break;
-                    }
-                }
-                if (idHighScore>=0){
-                    m_highScores.Insert(idHighScore, new HighScore(name, score));
-                    if (m_highScores.Count>10){
-                        m_highScores.RemoveAt(m_highScores.Count-1);
-                    }
-                    saveHighScores();
-                }
-            }
-            void insertHighScore(int id,String name,int score){
-                if ((id>=0)&&(id<10)){
-                    m_highScores.Insert(id, new HighScore(name, score));
-                    if (m_highScores.Count>10){
-                        m_highScores.RemoveAt(m_highScores.Count-1);
-                    }
-                }
-            }
-
-            int IsHighScore(int score)
-            {
-                //---------------------------------------------------
-                for (int i=0;i<10;i++){
-                    if (score>m_highScores[i].Score){
-                        return i;
-                    }
-                }
-                return -1;
-            }
-
             void drawHighScoresScreen()
             {
                 //---------------------------------------------------
                 if (window != null)
                 {
 
-                    Text txt = new Text("HIGH SCORES", myFont, 28);
+                    Text txt = new Text("HIGH SCORES", myFont, 24);
                     if ((m_i_color % 2)==0){
                         txt.FillColor = new Color(254, 238, 72, 255);
                     }else{
@@ -1233,12 +1099,12 @@ namespace SfmlTetris
                     txt.Position = new Vector2f(m_x_center, 44);
                     window.Draw(txt);
 
-                    int xCol0 = m_cell_size*(Globals.NB_COLUMNS/4);
-                    int xCol1 = m_cell_size*(3*Globals.NB_COLUMNS/4);
+                    int xCol0 = Globals.cellSize*(Globals.NB_COLUMNS/4);
+                    int xCol1 = Globals.cellSize*(3*Globals.NB_COLUMNS/4);
                     int yLin = 80;
                     foreach (var h in m_highScores)
                     {
-                        txt = new Text(h.Name, myFont, 22);
+                        txt = new Text(h.Name, myFont, 20);
                         txt.Style = Text.Styles.Bold | Text.Styles.Regular;
                         txt.Position = new Vector2f(xCol0, yLin);
                         window.Draw(txt);
@@ -1277,52 +1143,14 @@ namespace SfmlTetris
                         float yCenter = (bottom+top)/2;
                         RectangleShape  rShapeText = new RectangleShape(new Vector2f(rect.Width+30, rect.Height+14));
                         rShapeText.Position = new Vector2f(xCenter-(rect.Width+24)/2, yCenter-(rect.Height+14)/2);
-                        rShapeText.FillColor = Color.Green;
+                        rShapeText.FillColor = new Color(60, 60, 255, 255);
                         window.Draw(rShapeText);
-                        textScore.FillColor = Color.Red;
+                        textScore.FillColor = new Color(254, 238, 72, 255);
                         textScore.Style = Text.Styles.Bold | Text.Styles.Regular;
                         textScore.Origin = new Vector2f(rect.Left + rect.Width/2.0f,rect.Top + rect.Height/2.0f);
                         textScore.Position = new Vector2f(xCenter,yCenter);
                         window.Draw(textScore);
                     }
-                }
-            }
-
-            void drawHightScoreInputScreen()
-            {
-                //-------------------------------------------
-                if (window != null)
-                {
-                    Text txt = new Text("NEW HIGH SCORE", myFont, 28);
-                    if ((m_i_color % 2)==0){
-                        txt.FillColor = new Color(254, 238, 72, 255);
-                    }else{
-                        txt.FillColor = Color.Blue;
-                    }
-                    var rect = txt.GetLocalBounds();
-                    txt.Style = Text.Styles.Bold | Text.Styles.Regular;
-                    txt.Origin = new Vector2f(rect.Left + rect.Width / 2.0f, rect.Top + rect.Height / 2.0f);
-                    txt.Position = new Vector2f(m_x_center, 44);
-                    window.Draw(txt);
-
-                    int xCol0 = Globals.cellSize*(Globals.NB_COLUMNS/4);
-                    int xCol1 = Globals.cellSize*(3*Globals.NB_COLUMNS/4);
-                    int yLin = 2 * 36;
-                    if (m_playerName == null)
-                    {
-                        txt = new Text("________", myFont, 22);
-                    }
-                    else
-                    {
-                        txt = new Text(m_playerName, myFont, 22);
-                    }
-                    txt.Style = Text.Styles.Bold | Text.Styles.Regular;
-                    txt.Position = new Vector2f(xCol0, yLin);
-                    window.Draw(txt);
-                    txt = new Text(String.Format("{0:00000}", m_score), myFont, 22);
-                    txt.Style = Text.Styles.Bold | Text.Styles.Regular;
-                    txt.Position = new Vector2f(xCol1, yLin);
-                    window.Draw(txt);
                 }
             }
 
