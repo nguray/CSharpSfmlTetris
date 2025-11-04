@@ -7,6 +7,7 @@ using SFML.System;
 using SFML.Audio;
 using System.IO;
 using System.Text;
+using System.Runtime.CompilerServices;
 
 
 namespace SfmlTetris
@@ -158,13 +159,13 @@ namespace SfmlTetris
             private void NewTetromino(){
                 if (m_nextTetromino==null)
                 {
-                    m_nextTetromino = new Tetromino(TetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
+                    m_nextTetromino = new Tetromino(tetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
                 }
                 m_curTetromino = m_nextTetromino;
                 m_curTetromino.x = 6 * Globals.cellSize;
                 m_curTetromino.y = 0;
                 m_curTetromino.y = -m_curTetromino.MaxY1() * Globals.cellSize;
-                m_nextTetromino = new Tetromino(TetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
+                m_nextTetromino = new Tetromino(tetrisRandomizer(),(Globals.NB_COLUMNS+3)*Globals.cellSize,10*Globals.cellSize);
 
             }
 
@@ -328,7 +329,7 @@ namespace SfmlTetris
                 }
             }
 
-            private void WriteScoreLine(FileStream fs, string value)
+            private void writeScoreLine(FileStream fs, string value)
             {
                 //------------------------------------------------------
                 byte[] info = new UTF8Encoding(true).GetBytes(value);
@@ -350,7 +351,7 @@ namespace SfmlTetris
                     String lin;
                     foreach ( var h in m_highScores ){
                         lin = String.Format("{0},{1}\n", h.Name, h.Score);
-                        WriteScoreLine(fs, lin);
+                        writeScoreLine(fs, lin);
                     }
 
                 }
@@ -443,10 +444,8 @@ namespace SfmlTetris
 
                 string filePath = "109662__grunz__success.wav";
                 succesSoundBuff = new SoundBuffer(filePath);
-
                 filePath = "Nutcracker-song.ogg";
                 music = new Music(filePath);
-
                 filePath = "sansation.ttf";
                 myFont = new Font(filePath);
 
@@ -776,14 +775,18 @@ namespace SfmlTetris
 
                     }
 
-                    if (m_nextTetromino != null)
+                    curTime = m_clock.ElapsedTime.AsMilliseconds();
+                    if ((curTime - startTimeR) > 500)
                     {
-                        curTime = m_clock.ElapsedTime.AsMilliseconds();
-                        if ((curTime - startTimeR) > 500)
+                        startTimeR = curTime;
+                        if (m_nextTetromino != null)
                         {
-                            startTimeR = curTime;
                             m_nextTetromino.RotateLeft();
                         }
+                        m_i_color++;
+                    }
+                    if (m_nextTetromino != null)
+                    {
                         m_nextTetromino.Draw(window);
                     }
 
@@ -1060,7 +1063,7 @@ namespace SfmlTetris
 
             //--------------------------------------------------------------------
             //--
-            static Int32 TetrisRandomizer(){
+            private Int32 tetrisRandomizer(){
                 Int32 iSrc;
                 Int32 iTyp=0;
                 if (idTetrominoBag<14){
@@ -1081,34 +1084,42 @@ namespace SfmlTetris
                 return iTyp;
             }
 
-            void drawHighScoresScreen()
+            private void drawHighScoresScreen()
             {
                 //---------------------------------------------------
                 if (window != null)
                 {
 
                     Text txt = new Text("HIGH SCORES", myFont, 24);
-                    if ((m_i_color % 2)==0){
-                        txt.FillColor = new Color(254, 238, 72, 255);
-                    }else{
-                        txt.FillColor = Color.Blue;
-                    }
                     var rect = txt.GetLocalBounds();
                     txt.Style = Text.Styles.Bold | Text.Styles.Regular;
                     txt.Origin = new Vector2f(rect.Left + rect.Width / 2.0f, rect.Top + rect.Height / 2.0f);
                     txt.Position = new Vector2f(m_x_center, 44);
                     window.Draw(txt);
 
-                    int xCol0 = Globals.cellSize*(Globals.NB_COLUMNS/4);
-                    int xCol1 = Globals.cellSize*(3*Globals.NB_COLUMNS/4);
+                    int offSet = (Globals.cellSize*Globals.NB_COLUMNS)/8;
+                    int xCol0 = (int) (1.5f*offSet);
+                    int xCol1 = offSet*5;
                     int yLin = 80;
-                    foreach (var h in m_highScores)
+                    Color color;
+                    for(int i=0; i<m_highScores.Count;i++)
                     {
+                        var h = m_highScores[i];
+                        if (((m_i_color % 2)==0)&&(i==m_idHighScore))
+                        {
+                            color = Color.Blue;                        
+                        }
+                        else
+                        {
+                            color = new Color(254, 238, 72, 255);
+                        }
                         txt = new Text(h.Name, myFont, 20);
+                        txt.FillColor = color;
                         txt.Style = Text.Styles.Bold | Text.Styles.Regular;
                         txt.Position = new Vector2f(xCol0, yLin);
                         window.Draw(txt);
                         txt = new Text(String.Format("{0:00000}", h.Score), myFont, 22);
+                        txt.FillColor = color;
                         txt.Style = Text.Styles.Bold | Text.Styles.Regular;
                         txt.Position = new Vector2f(xCol1, yLin);
                         window.Draw(txt);
@@ -1118,7 +1129,7 @@ namespace SfmlTetris
                 }
             }
 
-            void drawCurrentScore()
+            private void drawCurrentScore()
             {
                 //---------------------------------------------------
                  if (window!=null){
@@ -1126,14 +1137,14 @@ namespace SfmlTetris
                     if (textScore!=null){
                         textScore.FillColor = new Color(255,223,0);
                         textScore.Style = Text.Styles.Bold | Text.Styles.Italic;
-                        textScore.Position = new Vector2f(left+(Globals.cellSize*Globals.NB_COLUMNS+1),top);
+                        textScore.Position = new Vector2f(left+Globals.cellSize*Globals.NB_COLUMNS+10,top);
                         window.Draw(textScore);
                     }
                  }
 
             }
 
-            void drawGameOverScreen(){
+            private void drawGameOverScreen(){
                 //---------------------------------------------------
                 if (window!=null){
                     textScore = new Text(String.Format("Game Over",m_score),myFont,28);
@@ -1154,7 +1165,7 @@ namespace SfmlTetris
                 }
             }
 
-            void drawStandbyScreen()
+            private void drawStandbyScreen()
             {
                 //-------------------------------------------
                 if (window != null){
@@ -1189,7 +1200,7 @@ namespace SfmlTetris
                     window.Draw(txt2);
 
                     yLin += 42;
-                    Text txt3 = new Text("Raymond NGUYEN THANH", myFont, 18);
+                    Text txt3 = new Text("Raymond NGUYEN THANH", myFont, 16);
                     rect = txt3.GetLocalBounds();
                     txt3.Style = Text.Styles.Bold | Text.Styles.Regular;
                     txt3.Origin = new Vector2f(rect.Width / 2.0f, rect.Height / 2.0f);
