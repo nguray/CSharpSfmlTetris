@@ -14,7 +14,6 @@ namespace SfmlTetris
         
         public override void ProcessKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
         {
-            Console.WriteLine("HighScoresMode KeyPressed{0}", arg0: game.startTimeV);
             //----------------------------------------------
             if (sender == null) return;
             var window = (SFML.Window.Window)sender;
@@ -101,7 +100,7 @@ namespace SfmlTetris
             //---------------------------------------------------
             if (game.window != null)
             {
-                int x_center = (int)(Globals.LEFT* + Globals.cellSize * Globals.NB_COLUMNS / 2);
+                int x_center = (int)(Globals.LEFT + Globals.cellSize * Globals.NB_COLUMNS / 2);
 
                 Text txt = new Text("HIGH SCORES", game.myFont, 24);
                 var rect = txt.GetLocalBounds();

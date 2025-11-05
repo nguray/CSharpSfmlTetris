@@ -44,7 +44,7 @@ namespace SfmlTetris
                 }
                 else
                 {
-                    game.InitGame();
+                    //game.InitGame();
                     game.SetGameOverMode();
                 }
 
@@ -429,25 +429,6 @@ namespace SfmlTetris
 
                         }
                     }
-                }
-
-            }
-
-
-            //-- Check Game Over
-            if (game.isGameOver())
-            {
-                game.m_idHighScore = game.IsHighScore(game.m_score);
-                if (game.m_idHighScore >= 0)
-                {
-                    game.insertHighScore(game.m_idHighScore, game.m_playerName, game.m_score);
-                    game.SetHighScoresMode();
-                    game.InitGame();
-                }
-                else
-                {
-                    game.InitGame();
-                    game.SetGameOverMode();
                 }
 
             }

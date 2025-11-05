@@ -161,7 +161,7 @@ namespace SfmlTetris
             {
                 m_board[i] = 0;
             }
-            startTimeV = m_clock.ElapsedTime.AsMilliseconds();
+            startTimeV = 0;
             startTimeH = startTimeV;
             startTimeR = startTimeV;
 
@@ -183,7 +183,7 @@ namespace SfmlTetris
             int iLine = 0;
             string name;
             int score;
-            string path = @"HighScores.txt";
+            string path = "HighScores.txt";
             //------------------------------------------------------
             if (File.Exists(path))
             {
@@ -207,6 +207,15 @@ namespace SfmlTetris
                 {
                     Console.WriteLine(uAEx.Message);
                 }
+            }
+            else
+            {
+                for (int i=0; i<10; i++)
+                {
+                    //--
+                    m_highScores.Add(new HighScore("XXXXX", 0));
+                }
+                
             }
         }
 
@@ -423,13 +432,32 @@ namespace SfmlTetris
             if ((curTime - startTimeR) > 500)
             {
                 startTimeR = curTime;
-                if (m_nextTetromino!=null)
+                if (m_nextTetromino != null)
                 {
                     m_nextTetromino.RotateLeft();
                 }
                 m_i_color++;
 
             }
+
+            //-- Check Game Over
+            if (isGameOver())
+            {
+                m_idHighScore = IsHighScore(m_score);
+                if (m_idHighScore >= 0)
+                {
+                    insertHighScore(m_idHighScore, m_playerName, m_score);
+                    SetHighScoresMode();
+                    InitGame();
+                }
+                else
+                {
+                    InitGame();
+                    SetGameOverMode();
+                }
+
+            }
+
 
         }
 
@@ -449,18 +477,16 @@ namespace SfmlTetris
 
         const string TITLE = "Tetris";
 
-
-
         static void Main(string[] args)
         {
 
             //Console.WriteLine("Hello, World!");
-            var game = new MyGame();
-            game.Run();
+            var app = new MyApp();
+            app.Run();
 
         }
 
-        class MyGame
+        class MyApp
         {
 
             private VideoMode mode;

@@ -14,13 +14,12 @@ namespace SfmlTetris
         
         public override void ProcessKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
         {
-            Console.WriteLine("StandByMode KeyPressed{0}", arg0: game.startTimeV);
                 //----------------------------------------------
             if (sender == null) return;
             var window = (SFML.Window.Window)sender;
             if (e.Code == SFML.Window.Keyboard.Key.Space)
             {
-                game.m_clock.Restart();
+                game.InitGame();
                 game.SetPlayMode();
                 game.NewTetromino();
 

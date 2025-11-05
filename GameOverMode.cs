@@ -14,7 +14,6 @@ namespace SfmlTetris
         
         public override void ProcessKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
         {
-            Console.WriteLine("StandByMode KeyPressed{0}", arg0: game.startTimeV);
             //----------------------------------------------
             if (sender == null) return;
             var window = (SFML.Window.Window)sender;
@@ -36,6 +35,9 @@ namespace SfmlTetris
             //---------------------------------------------------
             if (game.window != null)
             {
+
+                game.DrawBoard();
+
                 var left = Globals.LEFT;
                 var right = left + Globals.cellSize * Globals.NB_COLUMNS;
                 var top = Globals.TOP;
