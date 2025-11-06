@@ -40,6 +40,9 @@ namespace SfmlTetris
 
     class Game
     {
+        private VideoMode mode;
+        const string TITLE = "Tetris using SFML";
+
         public int startTimeV = 0;
         public int startTimeH = 0;
         public int startTimeR = 0;
@@ -150,6 +153,23 @@ namespace SfmlTetris
             filePath = "sansation.ttf";
             myFont = new Font(filePath);
 
+            if (succesSoundBuff != null)
+            {
+                if (succesSound != null)
+                {
+                    succesSound.SoundBuffer = succesSoundBuff;
+                    succesSound.Volume = 15.0f;
+                }
+            }
+
+            if (music is not null)
+            {
+                music.Volume = 40.0f;
+                music.Loop = true;
+                music.Play();
+            }
+
+
         }
 
         public void InitGame()
@@ -210,12 +230,12 @@ namespace SfmlTetris
             }
             else
             {
-                for (int i=0; i<10; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     //--
                     m_highScores.Add(new HighScore("XXXXX", 0));
                 }
-                
+
             }
         }
 
@@ -461,6 +481,180 @@ namespace SfmlTetris
 
         }
 
+        public Int32 ComputeCompledLines()
+        {
+
+            Int32 nbLines = 0;
+            bool fCompleted;
+            for (int r = 0; r < Globals.NB_ROWS; r++)
+            {
+                fCompleted = true;
+                for (int c = 0; c < Globals.NB_COLUMNS; c++)
+                {
+                    if (m_board[r * Globals.NB_COLUMNS + c] == 0)
+                    {
+                        fCompleted = false;
+                        break;
+                    }
+                }
+                if (fCompleted)
+                {
+                    nbLines++;
+                }
+            }
+            return nbLines;
+        }
+
+        public void EraseFirstCompletedLine()
+        {
+            //---------------------------------------------------
+            bool fCompleted = false;
+            for (int r = 0; r < Globals.NB_ROWS; r++)
+            {
+                fCompleted = true;
+                for (int c = 0; c < Globals.NB_COLUMNS; c++)
+                {
+                    if (m_board[r * Globals.NB_COLUMNS + c] == 0)
+                    {
+                        fCompleted = false;
+                        break;
+                    }
+                }
+                if (fCompleted)
+                {
+                    //-- Décaler d'une ligne le plateau
+                    for (int r1 = r; r1 > 0; r1--)
+                    {
+                        for (int c1 = 0; c1 < Globals.NB_COLUMNS; c1++)
+                        {
+                            m_board[r1 * Globals.NB_COLUMNS + c1] = m_board[(r1 - 1) * Globals.NB_COLUMNS + c1];
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+
+        public int FreezeCurTetromino()
+        {
+            int nbCompletedLines = 0;
+            //----------------------------------------------------
+            if (m_curTetromino != null)
+            {
+                var ix = (m_curTetromino.x + 1) / Globals.cellSize;
+                var iy = (m_curTetromino.y + 1) / Globals.cellSize;
+                foreach (var v in m_curTetromino.vectors)
+                {
+                    var x = v.X + ix;
+                    var y = v.Y + iy;
+                    if ((x >= 0) && (x < Globals.NB_COLUMNS) && (y >= 0) && (y < Globals.NB_ROWS))
+                    {
+                        m_board[y * Globals.NB_COLUMNS + x] = m_curTetromino.type;
+                    }
+                }
+                //--
+                nbCompletedLines = ComputeCompledLines();
+                if (nbCompletedLines > 0)
+                {
+                    m_score += ComputeScore(nbCompletedLines);
+
+                }
+            }
+            return nbCompletedLines;
+
+        }
+
+        public void Run()
+        {
+
+            var names =
+                System
+                .Reflection
+                .Assembly
+                .GetExecutingAssembly()
+                .GetManifestResourceNames();
+
+            foreach (var name in names)
+            {
+                Console.WriteLine(name);
+            }
+
+
+            mode = new VideoMode(Globals.WIN_WIDTH, Globals.WIN_HEIGHT);
+
+            window = new RenderWindow(mode, TITLE);
+
+            window.SetVerticalSyncEnabled(true);
+            window.SetFramerateLimit(60);
+
+
+            //-- Get board size
+            Vector2u s = window.Size;
+
+            DateTime randSeed = DateTime.Now;
+            Globals.rand = new Random(randSeed.Millisecond);
+
+            //-- Init Game
+
+            InitGame();
+
+
+            window.Closed += (StringReader, args) => endGame();
+            window.KeyReleased += OnKeyReleased;
+
+            window.KeyPressed += OnKeyPressed;
+
+            SetStandbyMode();
+
+
+            while (window.IsOpen)
+            {
+
+                window.Clear(new Color(64, 64, 255));
+
+                RectangleShape r0 = new RectangleShape(new Vector2f(Globals.NB_COLUMNS * Globals.cellSize, Globals.NB_ROWS * Globals.cellSize));
+                r0.Position = new Vector2f(Globals.LEFT, Globals.TOP);
+                r0.FillColor = new Color(10, 10, 100);
+                window.Draw(r0);
+
+                //--
+                window.DispatchEvents();
+
+                if (curGameMode!=null)
+                {
+                    curGameMode.Update();                
+                    curGameMode.Draw();
+                }
+
+                Update();
+
+                //--
+                drawCurrentScore();
+
+                //draw();
+                window.Display();
+
+
+            }
+
+        }
+
+        void OnKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
+        {
+            if (curGameMode != null)
+            {
+                curGameMode.ProcessKeyPressed(sender, e);
+            }
+        }
+        void OnKeyReleased(object? sender, SFML.Window.KeyEventArgs e)
+        {
+            if (curGameMode != null)
+            {
+                curGameMode.ProcessKeyReleased(sender, e);
+            }
+        }
+
+
     }
 
     abstract class IGameMode
@@ -475,128 +669,12 @@ namespace SfmlTetris
     class Program
     {
 
-        const string TITLE = "Tetris";
 
         static void Main(string[] args)
         {
-
-            //Console.WriteLine("Hello, World!");
-            var app = new MyApp();
+            //--------------------------------------------
+            var app = new Game();
             app.Run();
-
-        }
-
-        class MyApp
-        {
-
-            private VideoMode mode;
-
-            private delegate void ProcessKey(object? sender, SFML.Window.KeyEventArgs e);
-
-            static Game? myGame1 = new Game();
-
-            public void Run()
-            {
-
-                var names =
-                    System
-                    .Reflection
-                    .Assembly
-                    .GetExecutingAssembly()
-                    .GetManifestResourceNames();
-
-                foreach (var name in names)
-                {
-                    Console.WriteLine(name);
-                }
-
-
-                mode = new VideoMode(Globals.WIN_WIDTH, Globals.WIN_HEIGHT);
-
-                myGame1.window = new RenderWindow(mode, TITLE);
-
-                myGame1.window.SetVerticalSyncEnabled(true);
-                myGame1.window.SetFramerateLimit(60);
-
-                if (myGame1.succesSoundBuff != null)
-                {
-                    if (myGame1.succesSound != null)
-                    {
-                        myGame1.succesSound.SoundBuffer = myGame1.succesSoundBuff;
-                        myGame1.succesSound.Volume = 15.0f;
-                    }
-                }
-
-                if (myGame1.music is not null)
-                {
-                    myGame1.music.Volume = 40.0f;
-                    myGame1.music.Loop = true;
-                    myGame1.music.Play();
-                }
-
-
-                //-- Get board size
-                Vector2u s = myGame1.window.Size;
-
-                DateTime randSeed = DateTime.Now;
-                Globals.rand = new Random(randSeed.Millisecond);
-
-                //-- Init Game
-
-                myGame1.InitGame();
-
-
-                myGame1.window.Closed += (StringReader, args) => myGame1.endGame();
-                myGame1.window.KeyReleased += OnKeyReleased;
-
-                myGame1.window.KeyPressed += OnKeyPressed;
-
-                myGame1.SetStandbyMode();
-
-
-                while (myGame1.window.IsOpen)
-                {
-
-                    myGame1.window.Clear(new Color(64, 64, 255));
-
-                    RectangleShape r0 = new RectangleShape(new Vector2f(Globals.NB_COLUMNS * Globals.cellSize, Globals.NB_ROWS * Globals.cellSize));
-                    r0.Position = new Vector2f(Globals.LEFT, Globals.TOP);
-                    r0.FillColor = new Color(10, 10, 100);
-                    myGame1.window.Draw(r0);
-
-                    //--
-                    myGame1.window.DispatchEvents();
-
-                    myGame1.curGameMode.Update();
-                    myGame1.Update();
-
-                    myGame1.curGameMode.Draw();
-
-                    //--
-                    myGame1.drawCurrentScore();
-
-                    //draw();
-                    myGame1.window.Display();
-
-
-                }
-
-            }
-
-            void OnKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
-            {
-                if (myGame1.curGameMode != null)
-                {
-                    myGame1.curGameMode.ProcessKeyPressed(sender, e);
-                }
-            }
-            void OnKeyReleased(object? sender, SFML.Window.KeyEventArgs e)
-            {
-                if (myGame1.curGameMode != null)
-                {
-                    myGame1.curGameMode.ProcessKeyReleased(sender, e);
-                }
-            }
 
         }
 

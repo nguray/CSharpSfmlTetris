@@ -15,7 +15,7 @@ namespace SfmlTetris
         public override void ProcessKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
         {
                 //----------------------------------------------
-            if (sender == null) return;
+            if ((game==null)||(sender == null)) return;
             var window = (SFML.Window.Window)sender;
             if (e.Code == SFML.Window.Keyboard.Key.Space)
             {
@@ -40,7 +40,7 @@ namespace SfmlTetris
 
         public override void Draw()
         {
-            if (game.window != null)
+            if ((game!=null)&&(game.window != null))
             {
                 int x_center = (int)(Globals.LEFT + Globals.cellSize * Globals.NB_COLUMNS / 2);
 
