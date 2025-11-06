@@ -24,7 +24,7 @@ namespace SfmlTetris
             }
             else if (e.Code == SFML.Window.Keyboard.Key.Escape)
             {
-                game.endGame();
+                game.EndGame();
 
             }
 
@@ -43,7 +43,7 @@ namespace SfmlTetris
                 var top = Globals.TOP;
                 var bottom = top + Globals.cellSize * Globals.NB_ROWS;
 
-                var textScore = new Text(String.Format("Game Over", game.m_score), game.myFont, 28);
+                var textScore = new Text(String.Format("Game Over", game.score), game.myFont, 28);
                 if (textScore != null)
                 {
                     var rect = textScore.GetLocalBounds();

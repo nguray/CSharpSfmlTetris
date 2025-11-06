@@ -26,7 +26,7 @@ namespace SfmlTetris
             }
             else if (e.Code == SFML.Window.Keyboard.Key.Escape)
             {
-                game.endGame();
+                game.EndGame();
 
             }
             
@@ -47,7 +47,7 @@ namespace SfmlTetris
                 int offSetY = Globals.TOP + 3 * Globals.cellSize;
                 int yLin = offSetY;
                 Text txt = new Text("TETRIS", game.myFont, 24);
-                if ((game.m_i_color % 2) == 0)
+                if ((game.i_color % 2) == 0)
                 {
                     txt.FillColor = new Color(254, 238, 72, 255);
                 }

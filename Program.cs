@@ -12,14 +12,6 @@ using System.Runtime.CompilerServices;
 
 namespace SfmlTetris
 {
-    enum GameMode
-    {
-        STANDBY = 0,
-        PLAY,
-        HIGH_SCORES,
-        GAME_OVER
-    }
-
 
    static class Globals{
 
@@ -47,37 +39,35 @@ namespace SfmlTetris
         public int startTimeH = 0;
         public int startTimeR = 0;
 
-        public int[] m_board = new int[Globals.NB_COLUMNS * Globals.NB_ROWS];
-        public int m_score = 0;
+        public int[] board = new int[Globals.NB_COLUMNS * Globals.NB_ROWS];
+        public int score = 0;
 
         public Int32 idTetrominoBag = 14;
         public Int32[] tetrominoBag = { 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7 };
 
-        public Clock m_clock = new Clock();
+        public Clock clock = new Clock();
 
         public SoundBuffer? succesSoundBuff;
         public Music? music;
         public Sound? succesSound = new Sound();
         public Font? myFont;
 
-        public GameMode m_mode = GameMode.STANDBY;
-
-        private StandByMode? m_standbyMode;
-        private PlayMode? m_playMode;
-        private HighScoresMode? m_highScoresMode;
-        private GameOverMode? m_gameOverMode;
+        private StandByMode? standbyMode;
+        private PlayMode? playMode;
+        private HighScoresMode? highScoresMode;
+        private GameOverMode? gameOverMode;
 
         public IGameMode? curGameMode = null;
 
         public RenderWindow? window;
 
-        public List<HighScore> m_highScores = new List<HighScore>();
-        public Int32 m_idHighScore = -1;
-        public String m_playerName = "";
-        public uint m_i_color = 0;
+        public List<HighScore> highScores = new List<HighScore>();
+        public Int32 idHighScore = -1;
+        public String playerName = "";
+        public uint i_color = 0;
 
-        public Tetromino? m_curTetromino;
-        public Tetromino? m_nextTetromino;
+        public Tetromino? curTetromino;
+        public Tetromino? nextTetromino;
 
         private void getEmbeddedResource(string resourceName)
         {
@@ -100,14 +90,14 @@ namespace SfmlTetris
 
         public Game()
         {
-            m_standbyMode = new StandByMode(this);
-            m_playMode = new PlayMode(this);
-            m_highScoresMode = new HighScoresMode(this);
-            m_gameOverMode = new GameOverMode(this);
-            curGameMode = m_standbyMode;
+            standbyMode = new StandByMode(this);
+            playMode = new PlayMode(this);
+            highScoresMode = new HighScoresMode(this);
+            gameOverMode = new GameOverMode(this);
+            curGameMode = standbyMode;
 
-            loadHighScores();
-            m_highScores.Sort(delegate (HighScore h1, HighScore h2)
+            LoadHighScores();
+            highScores.Sort(delegate (HighScore h1, HighScore h2)
             {
                 if (h1.Score > h2.Score)
                 { //-- Tri Décroissant
@@ -154,15 +144,37 @@ namespace SfmlTetris
         public void InitGame()
         {
             //--------------------------------------------------------
-            m_score = 0;
+            score = 0;
 
-            for (int i = 0; i < m_board.Length; i++)
+            for (int i = 0; i < board.Length; i++)
             {
-                m_board[i] = 0;
+                board[i] = 0;
             }
             startTimeV = 0;
             startTimeH = startTimeV;
             startTimeR = startTimeV;
+
+        }
+
+        public void EndGame()
+        {
+            //-------------------------
+            if (music != null)
+            {
+                music.Stop();
+                music.Dispose();
+            }
+            if (succesSoundBuff != null)
+            {
+                if (succesSound != null)
+                {
+                    succesSound.Dispose();
+                }
+                succesSoundBuff.Dispose();
+            }
+            SaveHighScores();
+
+            if (window != null) window.Close();
 
         }
 
@@ -177,7 +189,7 @@ namespace SfmlTetris
 
         }
 
-        public void loadHighScores()
+        public void LoadHighScores()
         {
             int iLine = 0;
             string name;
@@ -189,13 +201,13 @@ namespace SfmlTetris
                 try
                 {
 
-                    m_highScores.Clear();
+                    highScores.Clear();
 
                     foreach (string line in System.IO.File.ReadLines(path))
                     {
                         //--
                         (name, score) = ParseHighScore(line);
-                        m_highScores.Add(new HighScore(name, score));
+                        highScores.Add(new HighScore(name, score));
                         //--
                         iLine++;
                         if (iLine > 9) break;
@@ -212,20 +224,20 @@ namespace SfmlTetris
                 for (int i = 0; i < 10; i++)
                 {
                     //--
-                    m_highScores.Add(new HighScore("XXXXX", 0));
+                    highScores.Add(new HighScore("XXXXX", 0));
                 }
 
             }
         }
 
-        public void writeScoreLine(FileStream fs, string value)
+        public void WriteScoreLine(FileStream fs, string value)
         {
             //------------------------------------------------------
             byte[] info = new UTF8Encoding(true).GetBytes(value);
             fs.Write(info, 0, info.Length);
         }
 
-        public void saveHighScores()
+        public void SaveHighScores()
         {
             string path = @"HighScores.txt";
             //------------------------------------------------------
@@ -238,10 +250,10 @@ namespace SfmlTetris
             using (FileStream fs = File.Create(path))
             {
                 String lin;
-                foreach (var h in m_highScores)
+                foreach (var h in highScores)
                 {
                     lin = String.Format("{0},{1}\n", h.Name, h.Score);
-                    writeScoreLine(fs, lin);
+                    WriteScoreLine(fs, lin);
                 }
 
             }
@@ -249,14 +261,14 @@ namespace SfmlTetris
 
         }
 
-        public void insertHighScore(int id, String name, int score)
+        public void InsertHighScore(int id, String name, int score)
         {
             if ((id >= 0) && (id < 10))
             {
-                m_highScores.Insert(id, new HighScore(name, score));
-                if (m_highScores.Count > 10)
+                highScores.Insert(id, new HighScore(name, score));
+                if (highScores.Count > 10)
                 {
-                    m_highScores.RemoveAt(m_highScores.Count - 1);
+                    highScores.RemoveAt(highScores.Count - 1);
                 }
             }
         }
@@ -266,7 +278,7 @@ namespace SfmlTetris
             //---------------------------------------------------
             for (int i = 0; i < 10; i++)
             {
-                if (score > m_highScores[i].Score)
+                if (score > highScores[i].Score)
                 {
                     return i;
                 }
@@ -274,51 +286,33 @@ namespace SfmlTetris
             return -1;
         }
 
-
-        public void endGame()
-        {
-            //-------------------------
-            if (music != null)
-            {
-                music.Stop();
-            }
-            saveHighScores();
-
-            if (window != null) window.Close();
-
-        }
-
         public void SetStandbyMode()
         {
-            m_mode = GameMode.STANDBY;
-            curGameMode = m_standbyMode;
+            curGameMode = standbyMode;
         }
 
         public void SetPlayMode()
         {
-            m_mode = GameMode.PLAY;
-            curGameMode = m_playMode;
+            curGameMode = playMode;
         }
 
         public void SetHighScoresMode()
         {
-            m_mode = GameMode.HIGH_SCORES;
-            curGameMode = m_highScoresMode;
+            curGameMode = highScoresMode;
 
         }
 
         public void SetGameOverMode()
         {
-            m_mode = GameMode.GAME_OVER;
-            curGameMode = m_gameOverMode;
+            curGameMode = gameOverMode;
         }
 
-        public bool isGameOver()
+        public bool IsGameOver()
         {
             //----------------------------------------
             for (int c = 0; c < Globals.NB_COLUMNS; c++)
             {
-                if (m_board[c] != 0)
+                if (board[c] != 0)
                 {
                     return true;
                 }
@@ -336,7 +330,7 @@ namespace SfmlTetris
             {
                 for (int c = 0; c < Globals.NB_COLUMNS; c++)
                 {
-                    var typ = m_board[l * Globals.NB_COLUMNS + c];
+                    var typ = board[l * Globals.NB_COLUMNS + c];
                     if (typ != 0)
                     {
                         r1.FillColor = Tetromino.Colors[typ];
@@ -348,7 +342,7 @@ namespace SfmlTetris
 
         }
 
-        public Int32 tetrisRandomizer()
+        public Int32 TetrisRandomizer()
         {
             Int32 iSrc;
             Int32 iTyp = 0;
@@ -393,12 +387,12 @@ namespace SfmlTetris
             }
         }
 
-        public void drawCurrentScore()
+        public void DrawCurrentScore()
         {
             //---------------------------------------------------
             if (window != null)
             {
-                var textScore = new Text(String.Format("Score : {0:00000}", m_score), myFont, 20);
+                var textScore = new Text(String.Format("Score : {0:00000}", score), myFont, 20);
                 if (textScore != null)
                 {
                     textScore.FillColor = new Color(255, 223, 0);
@@ -412,52 +406,58 @@ namespace SfmlTetris
 
         public void NewTetromino()
         {
-            if (m_nextTetromino == null)
+            if (nextTetromino == null)
             {
-                m_nextTetromino = new Tetromino(tetrisRandomizer(), (Globals.NB_COLUMNS + 3) * Globals.cellSize, 10 * Globals.cellSize);
+                nextTetromino = new Tetromino(TetrisRandomizer(), (Globals.NB_COLUMNS + 3) * Globals.cellSize, 10 * Globals.cellSize);
             }
-            m_curTetromino = m_nextTetromino;
-            m_curTetromino.x = 6 * Globals.cellSize;
-            m_curTetromino.y = 0;
-            m_curTetromino.y = -m_curTetromino.MaxY1() * Globals.cellSize;
-            m_nextTetromino = new Tetromino(tetrisRandomizer(), (Globals.NB_COLUMNS + 3) * Globals.cellSize, 10 * Globals.cellSize);
+            curTetromino = nextTetromino;
+            curTetromino.x = 6 * Globals.cellSize;
+            curTetromino.y = 0;
+            curTetromino.y = -curTetromino.MaxY1() * Globals.cellSize;
+            nextTetromino = new Tetromino(TetrisRandomizer(), (Globals.NB_COLUMNS + 3) * Globals.cellSize, 10 * Globals.cellSize);
 
         }
 
         public void Update()
         {
             //-----------------------------------------
-            var curTime = m_clock.ElapsedTime.AsMilliseconds();
+            var curTime = clock.ElapsedTime.AsMilliseconds();
             if ((curTime - startTimeR) > 500)
             {
                 startTimeR = curTime;
-                if (m_nextTetromino != null)
+                if (nextTetromino != null)
                 {
-                    m_nextTetromino.RotateLeft();
+                    nextTetromino.RotateRight();
                 }
-                m_i_color++;
+                i_color++;
 
             }
 
             //-- Check Game Over
-            if (isGameOver())
+            if (IsGameOver())
             {
-                m_idHighScore = IsHighScore(m_score);
-                if (m_idHighScore >= 0)
-                {
-                    insertHighScore(m_idHighScore, m_playerName, m_score);
-                    SetHighScoresMode();
-                    InitGame();
-                }
-                else
-                {
-                    InitGame();
-                    SetGameOverMode();
-                }
+                CheckHighScore();
 
             }
 
 
+        }
+
+        public void CheckHighScore()
+        {
+            idHighScore = IsHighScore(score);
+            if (idHighScore >= 0)
+            {
+                InsertHighScore(idHighScore, playerName, score);
+                SetHighScoresMode();
+                InitGame();
+            }
+            else
+            {
+                //game.InitGame();
+                SetGameOverMode();
+            }
+            
         }
 
         public Int32 ComputeCompledLines()
@@ -470,7 +470,7 @@ namespace SfmlTetris
                 fCompleted = true;
                 for (int c = 0; c < Globals.NB_COLUMNS; c++)
                 {
-                    if (m_board[r * Globals.NB_COLUMNS + c] == 0)
+                    if (board[r * Globals.NB_COLUMNS + c] == 0)
                     {
                         fCompleted = false;
                         break;
@@ -493,7 +493,7 @@ namespace SfmlTetris
                 fCompleted = true;
                 for (int c = 0; c < Globals.NB_COLUMNS; c++)
                 {
-                    if (m_board[r * Globals.NB_COLUMNS + c] == 0)
+                    if (board[r * Globals.NB_COLUMNS + c] == 0)
                     {
                         fCompleted = false;
                         break;
@@ -506,7 +506,7 @@ namespace SfmlTetris
                     {
                         for (int c1 = 0; c1 < Globals.NB_COLUMNS; c1++)
                         {
-                            m_board[r1 * Globals.NB_COLUMNS + c1] = m_board[(r1 - 1) * Globals.NB_COLUMNS + c1];
+                            board[r1 * Globals.NB_COLUMNS + c1] = board[(r1 - 1) * Globals.NB_COLUMNS + c1];
                         }
                     }
                     return;
@@ -518,24 +518,24 @@ namespace SfmlTetris
         {
             int nbCompletedLines = 0;
             //----------------------------------------------------
-            if (m_curTetromino != null)
+            if (curTetromino != null)
             {
-                var ix = (m_curTetromino.x + 1) / Globals.cellSize;
-                var iy = (m_curTetromino.y + 1) / Globals.cellSize;
-                foreach (var v in m_curTetromino.vectors)
+                var ix = (curTetromino.x + 1) / Globals.cellSize;
+                var iy = (curTetromino.y + 1) / Globals.cellSize;
+                foreach (var v in curTetromino.vectors)
                 {
                     var x = v.X + ix;
                     var y = v.Y + iy;
                     if ((x >= 0) && (x < Globals.NB_COLUMNS) && (y >= 0) && (y < Globals.NB_ROWS))
                     {
-                        m_board[y * Globals.NB_COLUMNS + x] = m_curTetromino.type;
+                        board[y * Globals.NB_COLUMNS + x] = curTetromino.type;
                     }
                 }
                 //--
                 nbCompletedLines = ComputeCompledLines();
                 if (nbCompletedLines > 0)
                 {
-                    m_score += ComputeScore(nbCompletedLines);
+                    score += ComputeScore(nbCompletedLines);
 
                 }
             }
@@ -574,11 +574,9 @@ namespace SfmlTetris
             Globals.rand = new Random(randSeed.Millisecond);
 
             //-- Init Game
-
             InitGame();
 
-
-            window.Closed += (StringReader, args) => endGame();
+            window.Closed += (StringReader, args) => EndGame();
             window.KeyReleased += OnKeyReleased;
 
             window.KeyPressed += OnKeyPressed;
@@ -599,16 +597,19 @@ namespace SfmlTetris
                 //--
                 window.DispatchEvents();
 
-                if (curGameMode!=null)
+
+                if (curGameMode != null)
                 {
-                    curGameMode.Update();                
+                    curGameMode.Update();
+
                     curGameMode.Draw();
                 }
 
                 Update();
 
+
                 //--
-                drawCurrentScore();
+                DrawCurrentScore();
 
                 //draw();
                 window.Display();
@@ -633,6 +634,13 @@ namespace SfmlTetris
             }
         }
 
+        public void playSuccesSound()
+        {
+            if (succesSound != null)
+            {
+                succesSound.Play();
+            }            
+        }
 
     }
 

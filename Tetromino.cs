@@ -8,7 +8,7 @@ namespace SfmlTetris
         public int type = 0;
         public int x = 0;
         public int y = 0;
-        public Color color = new Color(0,0,0);
+        public Color color = new(0,0,0);
         public List<Vector2i> vectors = new List<Vector2i>();
 
         static Vector2i[] TypeTetrominos = {
@@ -23,14 +23,14 @@ namespace SfmlTetris
         };
 
         public static Color[] Colors = {
-            new Color(0,0,0),
-            new Color(0,255,0),
-            new Color(255,0,0),
-            new Color(255,0,255),
-            new Color(0,255,255),
-            new Color(0,0,255),
-            new Color(255,128,0),
-            new Color(255,255,0)
+            new(0,0,0),
+            new(0,255,0),
+            new(255,0,0),
+            new(255,0,255),
+            new(0,255,255),
+            new(0,0,255),
+            new(255,128,0),
+            new(255,255,0)
         };
 
         public Tetromino(int type,int x,int y){
@@ -47,7 +47,6 @@ namespace SfmlTetris
         }
 
         public void Draw(RenderWindow window){
-
 
             RectangleShape r1 = new RectangleShape(new Vector2f(Globals.cellSize - 2, Globals.cellSize - 2));
             r1.FillColor = color;
@@ -70,6 +69,8 @@ namespace SfmlTetris
                     var v = vectors[i];
                     x = -v.Y;
                     y = v.X;
+                    v.X = x;
+                    v.Y = y;
                     vectors[i]= v;
                 }
             }

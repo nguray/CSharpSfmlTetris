@@ -17,10 +17,10 @@ namespace SfmlTetris
         public delegate bool IsOutLimit_t();
         static IsOutLimit_t? IsOutLimit;
 
-        int m_nbCompletedLines = 0;
+        int nbCompletedLines = 0;
 
-        int m_horizontalMove = 0;
-        int m_horizontalStartColumn = 0;
+        int horizontalMove = 0;
+        int horizontalStartColumn = 0;
 
         public PlayMode(Game? g)
         {
@@ -32,75 +32,64 @@ namespace SfmlTetris
             //----------------------------------------------
             if ((game==null)||(sender==null)) return;
             var window = (SFML.Window.Window)sender;
-            if (game.m_curTetromino == null) return;
+            if (game.curTetromino == null) return;
             if (e.Code == SFML.Window.Keyboard.Key.Escape)
             {
-                game.m_idHighScore = game.IsHighScore(game.m_score);
-                if (game.m_idHighScore >= 0)
-                {
-                    game.insertHighScore(game.m_idHighScore, game.m_playerName, game.m_score);
-                    game.SetHighScoresMode();
-                    game.InitGame();
-                }
-                else
-                {
-                    //game.InitGame();
-                    game.SetGameOverMode();
-                }
+                game.CheckHighScore();
 
             }
             else if (e.Code == SFML.Window.Keyboard.Key.Left)
             {
                 VelH = -1;
-                IsOutLimit = game.m_curTetromino.IsOutLeft;
+                IsOutLimit = game.curTetromino.IsOutLeft;
 
             }
             else if (e.Code == SFML.Window.Keyboard.Key.Right)
             {
                 VelH = 1;
-                IsOutLimit = game.m_curTetromino.IsOutRight;
+                IsOutLimit = game.curTetromino.IsOutRight;
 
             }
             else if (e.Code == SFML.Window.Keyboard.Key.Up)
             {
 
-                if (game.m_curTetromino != null)
+                if (game.curTetromino != null)
                 {
-                    game.m_curTetromino.RotateLeft();
-                    if (game.m_curTetromino.HitGround(game.m_board))
+                    game.curTetromino.RotateLeft();
+                    if (game.curTetromino.HitGround(game.board))
                     {
                         //-- Undo Rotate
-                        game.m_curTetromino.RotateRight();
+                        game.curTetromino.RotateRight();
                     }
-                    else if (game.m_curTetromino.IsOutRight())
+                    else if (game.curTetromino.IsOutRight())
                     {
-                        var backupX = game.m_curTetromino.x;
+                        var backupX = game.curTetromino.x;
                         //-- Move Inside board
-                        while (game.m_curTetromino.IsOutRight())
+                        while (game.curTetromino.IsOutRight())
                         {
-                            game.m_curTetromino.x--;
+                            game.curTetromino.x--;
                         }
-                        if (game.m_curTetromino.HitGround(game.m_board))
+                        if (game.curTetromino.HitGround(game.board))
                         {
-                            game.m_curTetromino.x = backupX;
+                            game.curTetromino.x = backupX;
                             //-- Undo Rotate
-                            game.m_curTetromino.RotateRight();
+                            game.curTetromino.RotateRight();
 
                         }
                     }
-                    else if (game.m_curTetromino.IsOutLeft())
+                    else if (game.curTetromino.IsOutLeft())
                     {
-                        var backupX = game.m_curTetromino.x;
+                        var backupX = game.curTetromino.x;
                         //-- Move Inside Board
-                        while (game.m_curTetromino.IsOutLeft())
+                        while (game.curTetromino.IsOutLeft())
                         {
-                            game.m_curTetromino.x++;
+                            game.curTetromino.x++;
                         }
-                        if (game.m_curTetromino.HitGround(game.m_board))
+                        if (game.curTetromino.HitGround(game.board))
                         {
-                            game.m_curTetromino.x = backupX;
+                            game.curTetromino.x = backupX;
                             //-- Undo Rotate
-                            game.m_curTetromino.RotateRight();
+                            game.curTetromino.RotateRight();
 
                         }
 
@@ -144,14 +133,14 @@ namespace SfmlTetris
             //--
             if ((game!=null)&&(game.window!=null))
             {
-                if (game.m_curTetromino != null)
+                if (game.curTetromino != null)
                 {
-                    game.m_curTetromino.Draw(game.window);
+                    game.curTetromino.Draw(game.window);
                 }
 
-                if (game.m_nextTetromino != null)
+                if (game.nextTetromino != null)
                 {
-                    game.m_nextTetromino.Draw(game.window);
+                    game.nextTetromino.Draw(game.window);
                 }
 
                 //--
@@ -167,59 +156,58 @@ namespace SfmlTetris
 
             int curTime;
 
-            if (game.m_curTetromino != null)
+            _ = game ?? throw new ArgumentNullException(nameof(game));
+            
+            if (game.curTetromino is not null)
             {
-                if (m_nbCompletedLines > 0)
+                if (nbCompletedLines > 0)
                 {
-                    curTime = game.m_clock.ElapsedTime.AsMilliseconds();
+                    curTime = game.clock.ElapsedTime.AsMilliseconds();
                     if ((curTime - startTimeV) > 500)
                     {
                         startTimeV = curTime;
-                        m_nbCompletedLines--;
+                        nbCompletedLines--;
                         game.EraseFirstCompletedLine();
-                        if (game.succesSound != null)
-                        {
-                            game.succesSound.Play();
-                        }
+                        game.playSuccesSound();
                     }
 
                 }
-                else if (m_horizontalMove != 0)
+                else if (horizontalMove != 0)
                 {
 
-                    curTime = game.m_clock.ElapsedTime.AsMilliseconds();
+                    curTime = game.clock.ElapsedTime.AsMilliseconds();
 
                     if ((curTime - startTimeH) > 20)
                     {
                         for (int i = 0; i < 5; i++)
                         {
 
-                            var backupX = game.m_curTetromino.x;
-                            game.m_curTetromino.x += m_horizontalMove;
+                            var backupX = game.curTetromino.x;
+                            game.curTetromino.x += horizontalMove;
                             //Console.WriteLine(horizontalMove);
                             if (IsOutLimit())
                             {
-                                game.m_curTetromino.x = backupX;
-                                m_horizontalMove = 0;
+                                game.curTetromino.x = backupX;
+                                horizontalMove = 0;
                                 break;
                             }
                             else
                             {
-                                if (game.m_curTetromino.HitGround(game.m_board))
+                                if (game.curTetromino.HitGround(game.board))
                                 {
-                                    game.m_curTetromino.x = backupX;
-                                    m_horizontalMove = 0;
+                                    game.curTetromino.x = backupX;
+                                    horizontalMove = 0;
                                     break;
                                 }
                             }
 
-                            if (m_horizontalMove != 0)
+                            if (horizontalMove != 0)
                             {
                                 startTimeH = curTime;
-                                if (m_horizontalStartColumn != game.m_curTetromino.Column())
+                                if (horizontalStartColumn != game.curTetromino.Column())
                                 {
-                                    game.m_curTetromino.x = backupX;
-                                    m_horizontalMove = 0;
+                                    game.curTetromino.x = backupX;
+                                    horizontalMove = 0;
                                     break;
                                 }
 
@@ -233,25 +221,25 @@ namespace SfmlTetris
                 else if (fDrop)
                 {
 
-                    curTime = game.m_clock.ElapsedTime.AsMilliseconds();
+                    curTime = game.clock.ElapsedTime.AsMilliseconds();
                     if ((curTime - startTimeV) > 10)
                     {
                         startTimeV = curTime;
                         for (int i = 0; i < 6; i++)
                         {
                             //-- Move down to Check
-                            game.m_curTetromino.y++;
-                            if (game.m_curTetromino.HitGround(game.m_board))
+                            game.curTetromino.y++;
+                            if (game.curTetromino.HitGround(game.board))
                             {
-                                game.m_curTetromino.y--;
-                                m_nbCompletedLines = game.FreezeCurTetromino();
+                                game.curTetromino.y--;
+                                nbCompletedLines = game.FreezeCurTetromino();
                                 game.NewTetromino();
                                 fDrop = false;
                             }
-                            else if (game.m_curTetromino.IsOutBottom())
+                            else if (game.curTetromino.IsOutBottom())
                             {
-                                game.m_curTetromino.y--;
-                                m_nbCompletedLines = game.FreezeCurTetromino();
+                                game.curTetromino.y--;
+                                nbCompletedLines = game.FreezeCurTetromino();
                                 game.NewTetromino();
                                 fDrop = false;
                             }
@@ -259,22 +247,22 @@ namespace SfmlTetris
                             {
                                 if ((curTime - startTimeH) > 15)
                                 {
-                                    var backupX = game.m_curTetromino.x;
-                                    game.m_curTetromino.x += VelH;
+                                    var backupX = game.curTetromino.x;
+                                    game.curTetromino.x += VelH;
                                     if (IsOutLimit())
                                     {
-                                        game.m_curTetromino.x = backupX;
+                                        game.curTetromino.x = backupX;
                                     }
                                     else
                                     {
-                                        if (game.m_curTetromino.HitGround(game.m_board))
+                                        if (game.curTetromino.HitGround(game.board))
                                         {
-                                            game.m_curTetromino.x = backupX;
+                                            game.curTetromino.x = backupX;
                                         }
                                         else
                                         {
-                                            m_horizontalMove = VelH;
-                                            m_horizontalStartColumn = game.m_curTetromino.Column();
+                                            horizontalMove = VelH;
+                                            horizontalStartColumn = game.curTetromino.Column();
                                             break;
                                         }
                                     }
@@ -287,7 +275,7 @@ namespace SfmlTetris
                 }
                 else
                 {
-                    curTime = game.m_clock.ElapsedTime.AsMilliseconds();
+                    curTime = game.clock.ElapsedTime.AsMilliseconds();
 
                     int limitElapse = fFastDown ? 10 : 30;
 
@@ -299,19 +287,19 @@ namespace SfmlTetris
                         for (int i = 0; i < 3; i++)
                         {
                             //-- Move down to check
-                            game.m_curTetromino.y++;
+                            game.curTetromino.y++;
                             var fMove = true;
-                            if (game.m_curTetromino.HitGround(game.m_board))
+                            if (game.curTetromino.HitGround(game.board))
                             {
-                                game.m_curTetromino.y--;
-                                m_nbCompletedLines = game.FreezeCurTetromino();
+                                game.curTetromino.y--;
+                                nbCompletedLines = game.FreezeCurTetromino();
                                 game.NewTetromino();
                                 fMove = false;
                             }
-                            else if (game.m_curTetromino.IsOutBottom())
+                            else if (game.curTetromino.IsOutBottom())
                             {
-                                game.m_curTetromino.y--;
-                                m_nbCompletedLines = game.FreezeCurTetromino();
+                                game.curTetromino.y--;
+                                nbCompletedLines = game.FreezeCurTetromino();
                                 game.NewTetromino();
                                 fMove = false;
                             }
@@ -323,24 +311,24 @@ namespace SfmlTetris
                                     if ((curTime - startTimeH) > 15)
                                     {
 
-                                        var backupX = game.m_curTetromino.x;
-                                        game.m_curTetromino.x += VelH;
+                                        var backupX = game.curTetromino.x;
+                                        game.curTetromino.x += VelH;
 
                                         if (IsOutLimit())
                                         {
-                                            game.m_curTetromino.x = backupX;
+                                            game.curTetromino.x = backupX;
                                         }
                                         else
                                         {
-                                            if (game.m_curTetromino.HitGround(game.m_board))
+                                            if (game.curTetromino.HitGround(game.board))
                                             {
-                                                game.m_curTetromino.x -= VelH;
+                                                game.curTetromino.x -= VelH;
                                             }
                                             else
                                             {
                                                 startTimeH = curTime;
-                                                m_horizontalMove = VelH;
-                                                m_horizontalStartColumn = game.m_curTetromino.Column();
+                                                horizontalMove = VelH;
+                                                horizontalStartColumn = game.curTetromino.Column();
                                                 break;
                                             }
                                         }
