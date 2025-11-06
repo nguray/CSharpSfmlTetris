@@ -79,6 +79,25 @@ namespace SfmlTetris
         public Tetromino? m_curTetromino;
         public Tetromino? m_nextTetromino;
 
+        private void getEmbeddedResource(string resourceName)
+        {
+            using (Stream? myStream = Assembly
+                        .GetExecutingAssembly()
+                        .GetManifestResourceStream($"CSharpSfmlTetris.res.{resourceName}"))
+            {
+                if (myStream is not null)
+                {
+                    using var fileStream = new FileStream(resourceName, FileMode.Create, FileAccess.Write);
+                    {
+                        myStream.CopyTo(fileStream);
+                        fileStream.Close();
+                    }
+                    myStream.Dispose();
+                }
+            }
+
+        }
+
         public Game()
         {
             m_standbyMode = new StandByMode(this);
@@ -101,50 +120,10 @@ namespace SfmlTetris
                 return 0;
             });
 
-            using (Stream? myStream = Assembly
-                        .GetExecutingAssembly()
-                        .GetManifestResourceStream(@"CSharpSfmlTetris.sansation.ttf"))
-            {
-                if (myStream is not null)
-                {
-                    using var fileStream = new FileStream("sansation.ttf", FileMode.Create, FileAccess.Write);
-                    {
-                        myStream.CopyTo(fileStream);
-                        fileStream.Close();
-                    }
-                    myStream.Dispose();
-                }
-            }
 
-            using (Stream? myStream = Assembly
-                        .GetExecutingAssembly()
-                        .GetManifestResourceStream(@"CSharpSfmlTetris.109662__grunz__success.wav"))
-            {
-                if (myStream is not null)
-                {
-                    using var fileStream = new FileStream("109662__grunz__success.wav", FileMode.Create, FileAccess.Write);
-                    {
-                        myStream.CopyTo(fileStream);
-                        fileStream.Close();
-                    }
-                    myStream.Dispose();
-                }
-            }
-
-            using (Stream? myStream = Assembly
-                        .GetExecutingAssembly()
-                        .GetManifestResourceStream(@"CSharpSfmlTetris.Nutcracker-song.ogg"))
-            {
-                if (myStream is not null)
-                {
-                    using var fileStream = new FileStream("Nutcracker-song.ogg", FileMode.Create, FileAccess.Write);
-                    {
-                        myStream.CopyTo(fileStream);
-                        fileStream.Close();
-                    }
-                    myStream.Dispose();
-                }
-            }
+            getEmbeddedResource("sansation.ttf");
+            getEmbeddedResource("109662__grunz__success.wav");
+            getEmbeddedResource("Nutcracker-song.ogg");
 
             string filePath = "109662__grunz__success.wav";
             succesSoundBuff = new SoundBuffer(filePath);
@@ -668,7 +647,6 @@ namespace SfmlTetris
 
     class Program
     {
-
 
         static void Main(string[] args)
         {
