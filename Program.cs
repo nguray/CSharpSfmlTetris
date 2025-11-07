@@ -323,6 +323,8 @@ namespace SfmlTetris
         public void DrawBoard()
         {
 
+            if (window is not RenderWindow win) return;
+
             var a = Globals.cellSize - 2;
             RectangleShape r1 = new RectangleShape(new Vector2f(a, a));
 
@@ -335,7 +337,7 @@ namespace SfmlTetris
                     {
                         r1.FillColor = Tetromino.Colors[typ];
                         r1.Position = new Vector2f(c * Globals.cellSize + Globals.LEFT + 1, l * Globals.cellSize + Globals.TOP + 1);
-                        window.Draw(r1);
+                        win.Draw(r1);
                     }
                 }
             }
@@ -415,7 +417,6 @@ namespace SfmlTetris
             curTetromino.y = 0;
             curTetromino.y = -curTetromino.MaxY1() * Globals.cellSize;
             nextTetromino = new Tetromino(TetrisRandomizer(), (Globals.NB_COLUMNS + 3) * Globals.cellSize, 10 * Globals.cellSize);
-
         }
 
         public void Update()
