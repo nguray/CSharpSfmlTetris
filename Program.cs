@@ -35,8 +35,6 @@ namespace SfmlTetris
         private VideoMode mode;
         const string TITLE = "Tetris using SFML";
 
-        public int startTimeV = 0;
-        public int startTimeH = 0;
         public int startTimeR = 0;
 
         public int[] board = new int[Globals.NB_COLUMNS * Globals.NB_ROWS];
@@ -150,9 +148,6 @@ namespace SfmlTetris
             {
                 board[i] = 0;
             }
-            startTimeV = 0;
-            startTimeH = startTimeV;
-            startTimeR = startTimeV;
 
         }
 
@@ -174,7 +169,7 @@ namespace SfmlTetris
             }
             SaveHighScores();
 
-            if (window != null) window.Close();
+            window?.Close();
 
         }
 
@@ -289,22 +284,25 @@ namespace SfmlTetris
         public void SetStandbyMode()
         {
             curGameMode = standbyMode;
+            curGameMode?.Init();
         }
 
         public void SetPlayMode()
         {
             curGameMode = playMode;
+            curGameMode?.Init();
         }
 
         public void SetHighScoresMode()
         {
             curGameMode = highScoresMode;
-
+            curGameMode?.Init();
         }
 
         public void SetGameOverMode()
         {
             curGameMode = gameOverMode;
+            curGameMode?.Init();
         }
 
         public bool IsGameOver()
@@ -356,12 +354,15 @@ namespace SfmlTetris
             else
             {
                 //-- Shuttle bag
-                for (int i = 0; i < tetrominoBag.Length; i++)
+                if (Globals.rand!=null)
                 {
-                    iSrc = Globals.rand.Next(0, 14);
-                    iTyp = tetrominoBag[iSrc];
-                    tetrominoBag[iSrc] = tetrominoBag[0];
-                    tetrominoBag[0] = iTyp;
+                    for (int i = 0; i < tetrominoBag.Length; i++)
+                    {
+                        iSrc = Globals.rand.Next(0, 14);
+                        iTyp = tetrominoBag[iSrc];
+                        tetrominoBag[iSrc] = tetrominoBag[0];
+                        tetrominoBag[0] = iTyp;
+                    }                    
                 }
                 iTyp = tetrominoBag[0];
                 idTetrominoBag = 1;
@@ -622,25 +623,16 @@ namespace SfmlTetris
 
         void OnKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
         {
-            if (curGameMode != null)
-            {
-                curGameMode.ProcessKeyPressed(sender, e);
-            }
+            curGameMode?.ProcessKeyPressed(sender, e);
         }
         void OnKeyReleased(object? sender, SFML.Window.KeyEventArgs e)
         {
-            if (curGameMode != null)
-            {
-                curGameMode.ProcessKeyReleased(sender, e);
-            }
+            curGameMode?.ProcessKeyReleased(sender, e);
         }
 
         public void playSuccesSound()
         {
-            if (succesSound != null)
-            {
-                succesSound.Play();
-            }            
+            succesSound?.Play();
         }
 
     }
@@ -652,6 +644,7 @@ namespace SfmlTetris
         public virtual void ProcessKeyReleased(object? sender, SFML.Window.KeyEventArgs e) {}
         public virtual void Update() {}
         public abstract void Draw();
+        public virtual void Init() {}
     }
 
     class Program

@@ -13,9 +13,10 @@ namespace SfmlTetris
 
         int startTimeV = 0;
         int startTimeH = 0;
+        int startTimeE = 0;
 
         public delegate bool IsOutLimit_t();
-        static IsOutLimit_t? IsOutLimit;
+        private IsOutLimit_t? IsOutLimit;
 
         int nbCompletedLines = 0;
 
@@ -26,6 +27,14 @@ namespace SfmlTetris
         {
             game = g;
         }
+
+        public override void Init()
+        {
+            startTimeV = 0;
+            startTimeH = 0;
+            startTimeE = 0;
+
+        } 
 
         public override void ProcessKeyPressed(object? sender, SFML.Window.KeyEventArgs e)
         {
@@ -131,15 +140,9 @@ namespace SfmlTetris
             if (game is not Game g) return;
             if (g.window is not RenderWindow win) return;
 
-            if (g.curTetromino != null)
-            {
-                g.curTetromino.Draw(win);
-            }
+            g.curTetromino?.Draw(win);
 
-            if (g.nextTetromino != null)
-            {
-                g.nextTetromino.Draw(win);
-            }
+            g.nextTetromino?.Draw(win);
 
             //--
             g.DrawBoard();
@@ -155,20 +158,21 @@ namespace SfmlTetris
 
             if (game is not Game g) return;
             if (g.curTetromino is not Tetromino curTetro) return;
-            
+
             if (nbCompletedLines > 0)
             {
                 curTime = g.clock.ElapsedTime.AsMilliseconds();
-                if ((curTime - startTimeV) > 500)
+                if ((curTime - startTimeE) > 250)
                 {
-                    startTimeV = curTime;
+                    startTimeE = curTime;
                     nbCompletedLines--;
                     g.EraseFirstCompletedLine();
                     g.playSuccesSound();
                 }
 
             }
-            else if (horizontalMove != 0)
+            
+            if (horizontalMove != 0)
             {
 
                 curTime = g.clock.ElapsedTime.AsMilliseconds();
@@ -181,7 +185,7 @@ namespace SfmlTetris
                         var backupX = curTetro.x;
                         curTetro.x += horizontalMove;
                         //Console.WriteLine(horizontalMove);
-                        if (IsOutLimit())
+                        if ((IsOutLimit!=null)&&IsOutLimit())
                         {
                             curTetro.x = backupX;
                             horizontalMove = 0;
@@ -247,7 +251,7 @@ namespace SfmlTetris
                             {
                                 var backupX = curTetro.x;
                                 curTetro.x += VelH;
-                                if (IsOutLimit())
+                                if ((IsOutLimit!=null)&&IsOutLimit())
                                 {
                                     curTetro.x = backupX;
                                 }
@@ -309,7 +313,7 @@ namespace SfmlTetris
                                 var backupX = curTetro.x;
                                 curTetro.x += VelH;
 
-                                if (IsOutLimit())
+                                if ((IsOutLimit!=null)&&IsOutLimit())
                                 {
                                     curTetro.x = backupX;
                                 }

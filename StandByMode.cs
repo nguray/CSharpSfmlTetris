@@ -34,12 +34,6 @@ namespace SfmlTetris
             
         }
 
-        // public override void ProcessKeyReleased(object? sender, SFML.Window.KeyEventArgs e)
-        // {
-        //     //--
-
-        // }
-
         public override void Draw()
         {
 
