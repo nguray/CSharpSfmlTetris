@@ -16,7 +16,7 @@ namespace SfmlTetris
         int startTimeE = 0;
 
         public delegate bool IsOutLimit_t();
-        private IsOutLimit_t? IsOutLimit;
+        private IsOutLimit_t? IsOutLimit = null;
 
         int nbCompletedLines = 0;
 
@@ -185,7 +185,7 @@ namespace SfmlTetris
                         var backupX = curTetro.x;
                         curTetro.x += horizontalMove;
                         //Console.WriteLine(horizontalMove);
-                        if ((IsOutLimit!=null)&&IsOutLimit())
+                        if ((IsOutLimit is not null)&&IsOutLimit())
                         {
                             curTetro.x = backupX;
                             horizontalMove = 0;
@@ -251,7 +251,7 @@ namespace SfmlTetris
                             {
                                 var backupX = curTetro.x;
                                 curTetro.x += VelH;
-                                if ((IsOutLimit!=null)&&IsOutLimit())
+                                if ((IsOutLimit is not null)&&IsOutLimit())
                                 {
                                     curTetro.x = backupX;
                                 }
@@ -313,7 +313,7 @@ namespace SfmlTetris
                                 var backupX = curTetro.x;
                                 curTetro.x += VelH;
 
-                                if ((IsOutLimit!=null)&&IsOutLimit())
+                                if ((IsOutLimit is not null)&&IsOutLimit())
                                 {
                                     curTetro.x = backupX;
                                 }

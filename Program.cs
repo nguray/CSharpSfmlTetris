@@ -34,6 +34,10 @@ namespace SfmlTetris
     {
         private VideoMode mode;
         const string TITLE = "Tetris using SFML";
+        const string SANSATION_TTF = "sansation.ttf";
+        const string NUTCRACKER_OGG = "Nutcracker-song.ogg";
+        const string SUCCES_WAV = "109662__grunz__success.wav";
+
 
         public int startTimeR = 0;
 
@@ -109,16 +113,16 @@ namespace SfmlTetris
             });
 
 
-            getEmbeddedResource("sansation.ttf");
-            getEmbeddedResource("109662__grunz__success.wav");
-            getEmbeddedResource("Nutcracker-song.ogg");
+            getEmbeddedResource(SANSATION_TTF);
+            getEmbeddedResource(SUCCES_WAV);
+            getEmbeddedResource(NUTCRACKER_OGG);
 
-            string filePath = "109662__grunz__success.wav";
+            string filePath = SUCCES_WAV;
             succesSoundBuff = new SoundBuffer(filePath);
-            filePath = "Nutcracker-song.ogg";
-            music = new Music(filePath);
-            filePath = "sansation.ttf";
-            myFont = new Font(filePath);
+            filePath    = NUTCRACKER_OGG;
+            music       = new Music(filePath);
+            filePath    = SANSATION_TTF;
+            myFont      = new Font(filePath);
 
             if (succesSoundBuff != null)
             {
@@ -154,20 +158,43 @@ namespace SfmlTetris
         public void EndGame()
         {
             //-------------------------
-            if (music != null)
+            if (music is not null)
             {
                 music.Stop();
                 music.Dispose();
             }
-            if (succesSoundBuff != null)
+            if (succesSoundBuff is not null)
             {
-                if (succesSound != null)
+                if (succesSound is not  null)
                 {
                     succesSound.Dispose();
                 }
                 succesSoundBuff.Dispose();
             }
             SaveHighScores();
+
+            if (myFont is not null)
+            {
+                myFont.Dispose();
+            }
+
+
+            //-- 
+            if (File.Exists(SANSATION_TTF))
+            {
+                File.Delete(SANSATION_TTF);                
+            }
+
+            if (File.Exists(SUCCES_WAV))
+            {
+                File.Delete(SUCCES_WAV);                
+            }
+
+            if (File.Exists(NUTCRACKER_OGG))
+            {
+                File.Delete(NUTCRACKER_OGG);
+            }
+
 
             window?.Close();
 
@@ -618,6 +645,7 @@ namespace SfmlTetris
 
 
             }
+            
 
         }
 
