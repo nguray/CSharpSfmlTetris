@@ -380,21 +380,15 @@ namespace SfmlTetris
 
         public Int32 ComputeScore(Int32 nbLines)
         {
-            switch (nbLines)
+            return nbLines switch
             {
-                case 0:
-                    return 0;
-                case 1:
-                    return 40;
-                case 2:
-                    return 100;
-                case 3:
-                    return 300;
-                case 4:
-                    return 1200;
-                default:
-                    return 2000;
-            }
+                0 => 0,
+                1 => 40,
+                2 => 100,
+                3 => 300,
+                4 => 1200,
+                _ => 2000,
+            };
         }
 
         public void DrawCurrentScore()
