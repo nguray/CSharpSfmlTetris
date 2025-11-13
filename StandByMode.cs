@@ -61,6 +61,7 @@ namespace SfmlTetris
 
             yLin += 48;
             Text txt1 = new Text("powered by", g.myFont, 18);
+            txt1.FillColor = new Color(254, 238, 72, 255);
             rect = txt1.GetLocalBounds();
             txt1.Style = Text.Styles.Bold | Text.Styles.Regular;
             txt1.Origin = new Vector2f(rect.Left + rect.Width / 2.0f, rect.Top + rect.Height / 2.0f);
@@ -69,6 +70,7 @@ namespace SfmlTetris
 
             yLin += 42;
             Text txt2 = new Text("Sfml and C#", g.myFont, 22);
+            txt2.FillColor = new Color(254, 238, 72, 255);
             rect = txt2.GetLocalBounds();
             txt2.Style = Text.Styles.Bold | Text.Styles.Regular;
             txt2.Origin = new Vector2f(rect.Width / 2.0f, rect.Height / 2.0f);
@@ -77,6 +79,7 @@ namespace SfmlTetris
 
             yLin += 42;
             Text txt3 = new Text("Raymond NGUYEN THANH", g.myFont, 16);
+            txt3.FillColor = new Color(254, 238, 72, 255);
             rect = txt3.GetLocalBounds();
             txt3.Style = Text.Styles.Bold | Text.Styles.Regular;
             txt3.Origin = new Vector2f(rect.Width / 2.0f, rect.Height / 2.0f);
