@@ -1,3 +1,4 @@
+using System.Security.Principal;
 using SFML.Graphics;
 using SFML.System;
 
@@ -48,16 +49,19 @@ namespace SfmlTetris
 
         public void Draw(RenderWindow window){
 
-            RectangleShape r1 = new RectangleShape(new Vector2f(Globals.cellSize - 2, Globals.cellSize - 2));
-            r1.FillColor = color;
-
-            foreach (var v in vectors)
+            if (window is not null)
             {
-                var vx = v.X * Globals.cellSize + this.x + Globals.LEFT;
-                var vy = v.Y * Globals.cellSize + this.y + Globals.TOP;
-                r1.Position = new Vector2f(vx + 1, vy + 1);
-                window.Draw(r1);
-            }            
+                RectangleShape r1 = new RectangleShape(new Vector2f(Globals.cellSize - 2, Globals.cellSize - 2));
+                r1.FillColor = color;
+
+                foreach (var v in vectors)
+                {
+                    var vx = v.X * Globals.cellSize + this.x + Globals.LEFT;
+                    var vy = v.Y * Globals.cellSize + this.y + Globals.TOP;
+                    r1.Position = new Vector2f(vx + 1, vy + 1);
+                    window.Draw(r1);
+                }                            
+            }
         }
 
         public void RotateRight()

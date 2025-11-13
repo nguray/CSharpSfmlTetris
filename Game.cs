@@ -143,20 +143,13 @@ namespace SfmlTetris
                 music.Stop();
                 music.Dispose();
             }
-            if (succesSoundBuff is not null)
-            {
-                if (succesSound is not  null)
-                {
-                    succesSound.Dispose();
-                }
-                succesSoundBuff.Dispose();
-            }
+            
+            succesSound?.Dispose();
+            succesSoundBuff?.Dispose();
+
             SaveHighScores();
 
-            if (myFont is not null)
-            {
-                myFont.Dispose();
-            }
+            myFont?.Dispose();
 
 
             //-- 
@@ -394,15 +387,15 @@ namespace SfmlTetris
         public void DrawCurrentScore()
         {
             //---------------------------------------------------
-            if (window != null)
+            if (window is not null)
             {
                 var textScore = new Text(String.Format("Score : {0:00000}", score), myFont, 20);
-                if (textScore != null)
+                if (textScore is not null)
                 {
                     textScore.FillColor = new Color(255, 223, 0);
                     textScore.Style = Text.Styles.Bold | Text.Styles.Italic;
                     textScore.Position = new Vector2f(Globals.LEFT + Globals.cellSize * Globals.NB_COLUMNS + 10, Globals.TOP);
-                    window.Draw(textScore);
+                    window?.Draw(textScore);
                 }
             }
 
@@ -410,7 +403,7 @@ namespace SfmlTetris
 
         public void NewTetromino()
         {
-            if (nextTetromino == null)
+            if (nextTetromino is null)
             {
                 nextTetromino = new Tetromino(TetrisRandomizer(), (Globals.NB_COLUMNS + 3) * Globals.cellSize, 10 * Globals.cellSize);
             }
@@ -428,10 +421,7 @@ namespace SfmlTetris
             if ((curTime - startTimeR) > 500)
             {
                 startTimeR = curTime;
-                if (nextTetromino != null)
-                {
-                    nextTetromino.RotateRight();
-                }
+                nextTetromino?.RotateRight();
                 i_color++;
 
             }
@@ -521,7 +511,7 @@ namespace SfmlTetris
         {
             int nbCompletedLines = 0;
             //----------------------------------------------------
-            if (curTetromino != null)
+            if (curTetromino is not null)
             {
                 var ix = (curTetromino.x + 1) / Globals.cellSize;
                 var iy = (curTetromino.y + 1) / Globals.cellSize;

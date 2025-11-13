@@ -46,7 +46,7 @@ namespace SfmlTetris
             var bottom = top + Globals.cellSize * Globals.NB_ROWS;
 
             var textScore = new Text(String.Format("Game Over", game.score), game.myFont, 28);
-            if (textScore != null)
+            if (textScore is not null)
             {
                 var rect = textScore.GetLocalBounds();
                 float xCenter = (left + right) / 2;

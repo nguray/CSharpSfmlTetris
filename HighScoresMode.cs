@@ -19,74 +19,75 @@ namespace SfmlTetris
             if (game is not Game g) return;
             if (sender is not RenderWindow win) return;
 
-            if ((e.Code == SFML.Window.Keyboard.Key.Enter) || (e.Code == SFML.Window.Keyboard.Key.Escape))
+            switch (e.Code)
             {
-                g.SetStandbyMode();
-                //m_curTetromino = null;
-                if (g.playerName.Length == 0)
-                {
-                    g.playerName = "XXXXXX";
-                }
-                g.highScores[g.idHighScore].Name = g.playerName;
-                g.SaveHighScores();
-                g.idHighScore = -1;
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Space)
-            {
-                if ((g.playerName == null) || (g.playerName.Length < 8))
-                {
-                    g.playerName += "_";
-                }
-                g.highScores[g.idHighScore].Name = g.playerName;
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Backspace)
-            {
-                if (g.playerName != null)
-                {
-                    if (g.playerName.Length == 1)
+                case SFML.Window.Keyboard.Key.Enter:
+                case SFML.Window.Keyboard.Key.Escape:
+                    g.SetStandbyMode();
+                    //m_curTetromino = null;
+                    if (g.playerName.Length == 0)
                     {
-                        g.playerName = "";
-                    }
-                    else if (g.playerName.Length > 1)
-                    {
-                        g.playerName = g.playerName.Substring(0, g.playerName.Length - 1);
+                        g.playerName = "XXXXXX";
                     }
                     g.highScores[g.idHighScore].Name = g.playerName;
-                }
-            }
-            else
-            {
-                if ((g.playerName != null) && (g.playerName.Length < 8))
-                {
-
-                    if ((e.Code >= SFML.Window.Keyboard.Key.Num0) && (e.Code <= SFML.Window.Keyboard.Key.Num9))
+                    g.SaveHighScores();
+                    g.idHighScore = -1;
+                    break;
+                case SFML.Window.Keyboard.Key.Space:
+                    if ((g.playerName is null) || (g.playerName.Length < 8))
                     {
-                        char c = (char)((int)'0' + e.Code - SFML.Window.Keyboard.Key.Num0);
-                        if (g.playerName.Length < 8)
-                        {
-                            g.playerName += c;
-                        }
-                    }
-                    else if ((e.Code >= SFML.Window.Keyboard.Key.Numpad0) && (e.Code <= SFML.Window.Keyboard.Key.Numpad9))
-                    {
-                        char c = (char)((int)'0' + e.Code - SFML.Window.Keyboard.Key.Numpad0);
-                        if (g.playerName.Length < 8)
-                        {
-                            g.playerName += c;
-                        }
-
-                    }
-                    else if ((e.Code >= SFML.Window.Keyboard.Key.A) && (e.Code <= SFML.Window.Keyboard.Key.Z))
-                    {
-                        char c = (char)((int)'A' + e.Code - SFML.Window.Keyboard.Key.A);
-                        if (g.playerName.Length < 8)
-                        {
-                            g.playerName += c;
-                        }
+                        g.playerName += "_";
                     }
                     g.highScores[g.idHighScore].Name = g.playerName;
+                    break;
+                case SFML.Window.Keyboard.Key.Backspace:
+                    if (g.playerName is not null)
+                    {
+                        if (g.playerName.Length == 1)
+                        {
+                            g.playerName = "";
+                        }
+                        else if (g.playerName.Length > 1)
+                        {
+                            g.playerName = g.playerName.Substring(0, g.playerName.Length - 1);
+                        }
+                        g.highScores[g.idHighScore].Name = g.playerName;
+                    }
+                    break;
+                default:
+                    if ((g.playerName is not null) && (g.playerName.Length < 8))
+                    {
 
-                }
+                        if ((e.Code >= SFML.Window.Keyboard.Key.Num0) && (e.Code <= SFML.Window.Keyboard.Key.Num9))
+                        {
+                            char c = (char)((int)'0' + e.Code - SFML.Window.Keyboard.Key.Num0);
+                            if (g.playerName.Length < 8)
+                            {
+                                g.playerName += c;
+                            }
+                        }
+                        else if ((e.Code >= SFML.Window.Keyboard.Key.Numpad0) && (e.Code <= SFML.Window.Keyboard.Key.Numpad9))
+                        {
+                            char c = (char)((int)'0' + e.Code - SFML.Window.Keyboard.Key.Numpad0);
+                            if (g.playerName.Length < 8)
+                            {
+                                g.playerName += c;
+                            }
+
+                        }
+                        else if ((e.Code >= SFML.Window.Keyboard.Key.A) && (e.Code <= SFML.Window.Keyboard.Key.Z))
+                        {
+                            char c = (char)((int)'A' + e.Code - SFML.Window.Keyboard.Key.A);
+                            if (g.playerName.Length < 8)
+                            {
+                                g.playerName += c;
+                            }
+                        }
+                        g.highScores[g.idHighScore].Name = g.playerName;
+
+                    }
+                    break;
+
             }
 
         }

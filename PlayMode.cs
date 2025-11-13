@@ -44,91 +44,81 @@ namespace SfmlTetris
             if (sender is not RenderWindow win) return;
             if (g.curTetromino is not Tetromino curTetro) return;
 
-            if (e.Code == SFML.Window.Keyboard.Key.Escape)
+            switch (e.Code)
             {
-                g.CheckHighScore();
-
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Left)
-            {
-                VelH = -1;
-                IsOutLimit = curTetro.IsOutLeft;
-
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Right)
-            {
-                VelH = 1;
-                IsOutLimit = curTetro.IsOutRight;
-
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Up)
-            {
-
-                curTetro.RotateLeft();
-                if (curTetro.HitGround(g.board))
-                {
-                    //-- Undo Rotate
-                    curTetro.RotateRight();
-                }
-                else if (curTetro.IsOutRight())
-                {
-                    var backupX = curTetro.x;
-                    //-- Move Inside board
-                    while (curTetro.IsOutRight())
-                    {
-                        curTetro.x--;
-                    }
+                case SFML.Window.Keyboard.Key.Escape:
+                    g.CheckHighScore();
+                    break;
+                case SFML.Window.Keyboard.Key.Left:
+                    VelH = -1;
+                    IsOutLimit = curTetro.IsOutLeft;
+                    break;
+                case SFML.Window.Keyboard.Key.Right:
+                    VelH = 1;
+                    IsOutLimit = curTetro.IsOutRight;
+                    break;
+                case SFML.Window.Keyboard.Key.Up:
+                    curTetro.RotateLeft();
                     if (curTetro.HitGround(g.board))
                     {
-                        curTetro.x = backupX;
                         //-- Undo Rotate
                         curTetro.RotateRight();
-
                     }
-                }
-                else if (curTetro.IsOutLeft())
-                {
-                    var backupX = curTetro.x;
-                    //-- Move Inside Board
-                    while (curTetro.IsOutLeft())
+                    else if (curTetro.IsOutRight())
                     {
-                        curTetro.x++;
+                        var backupX = curTetro.x;
+                        //-- Move Inside board
+                        while (curTetro.IsOutRight())
+                        {
+                            curTetro.x--;
+                        }
+                        if (curTetro.HitGround(g.board))
+                        {
+                            curTetro.x = backupX;
+                            //-- Undo Rotate
+                            curTetro.RotateRight();
+
+                        }
                     }
-                    if (curTetro.HitGround(g.board))
+                    else if (curTetro.IsOutLeft())
                     {
-                        curTetro.x = backupX;
-                        //-- Undo Rotate
-                        curTetro.RotateRight();
-
+                        var backupX = curTetro.x;
+                        //-- Move Inside Board
+                        while (curTetro.IsOutLeft())
+                        {
+                            curTetro.x++;
+                        }
+                        if (curTetro.HitGround(g.board))
+                        {
+                            curTetro.x = backupX;
+                            //-- Undo Rotate
+                            curTetro.RotateRight();
+                        }
                     }
-
-                }
-
-
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Down)
-            {
-                fFastDown = true;
-
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Space)
-            {
-                fDrop = true;
+                    break;
+                case SFML.Window.Keyboard.Key.Down:
+                    fFastDown = true;
+                    break;
+                case SFML.Window.Keyboard.Key.Space:
+                    fDrop = true;
+                    break;
 
             }
+
 
         }
         
         public override void ProcessKeyReleased(object? sender, SFML.Window.KeyEventArgs e)
         {
-            if ((e.Code == SFML.Window.Keyboard.Key.Left) || (e.Code == SFML.Window.Keyboard.Key.Right))
+            switch (e.Code)
             {
-                VelH = 0;
-
-            }
-            else if (e.Code == SFML.Window.Keyboard.Key.Down)
-            {
-                fFastDown = false;
+                case SFML.Window.Keyboard.Key.Left:
+                case SFML.Window.Keyboard.Key.Right:
+                    VelH = 0;
+                    break;
+                case SFML.Window.Keyboard.Key.Down:
+                    fFastDown = false;
+                    break;
 
             }
             
