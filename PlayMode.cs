@@ -10,6 +10,7 @@ namespace SfmlTetris
         bool fDrop = false;
         bool fFastDown = false;
         int VelH = 0;
+        bool fRotateTetromino = false;
 
         int startTimeV = 0;
         int startTimeH = 0;
@@ -33,6 +34,7 @@ namespace SfmlTetris
             startTimeV = 0;
             startTimeH = 0;
             startTimeE = 0;
+            fRotateTetromino = false;
 
         } 
 
@@ -58,43 +60,8 @@ namespace SfmlTetris
                     IsOutLimit = curTetro.IsOutRight;
                     break;
                 case SFML.Window.Keyboard.Key.Up:
-                    curTetro.RotateLeft();
-                    if (curTetro.HitGround(g.board))
-                    {
-                        //-- Undo Rotate
-                        curTetro.RotateRight();
-                    }
-                    else if (curTetro.IsOutRight())
-                    {
-                        var backupX = curTetro.x;
-                        //-- Move Inside board
-                        while (curTetro.IsOutRight())
-                        {
-                            curTetro.x--;
-                        }
-                        if (curTetro.HitGround(g.board))
-                        {
-                            curTetro.x = backupX;
-                            //-- Undo Rotate
-                            curTetro.RotateRight();
-
-                        }
-                    }
-                    else if (curTetro.IsOutLeft())
-                    {
-                        var backupX = curTetro.x;
-                        //-- Move Inside Board
-                        while (curTetro.IsOutLeft())
-                        {
-                            curTetro.x++;
-                        }
-                        if (curTetro.HitGround(g.board))
-                        {
-                            curTetro.x = backupX;
-                            //-- Undo Rotate
-                            curTetro.RotateRight();
-                        }
-                    }
+                    //-- Request current tetromino rotation
+                    fRotateTetromino = true;
                     break;
                 case SFML.Window.Keyboard.Key.Down:
                     fFastDown = true;
@@ -207,6 +174,47 @@ namespace SfmlTetris
 
                 }
 
+            }else if (fRotateTetromino)
+            {
+                //-- Rotate current tetromino when there's no more horizontal move
+                curTetro.RotateLeft();
+                if (curTetro.HitGround(g.board))
+                {
+                    //-- Undo Rotate
+                    curTetro.RotateRight();
+                }
+                else if (curTetro.IsOutRight())
+                {
+                    var backupX = curTetro.x;
+                    //-- Move Inside board
+                    while (curTetro.IsOutRight())
+                    {
+                        curTetro.x--;
+                    }
+                    if (curTetro.HitGround(g.board))
+                    {
+                        curTetro.x = backupX;
+                        //-- Undo Rotate
+                        curTetro.RotateRight();
+
+                    }
+                }
+                else if (curTetro.IsOutLeft())
+                {
+                    var backupX = curTetro.x;
+                    //-- Move Inside Board
+                    while (curTetro.IsOutLeft())
+                    {
+                        curTetro.x++;
+                    }
+                    if (curTetro.HitGround(g.board))
+                    {
+                        curTetro.x = backupX;
+                        //-- Undo Rotate
+                        curTetro.RotateRight();
+                    }
+                }
+                fRotateTetromino = false;
             }
             else if (fDrop)
             {
